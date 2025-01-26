@@ -52,6 +52,8 @@ class MainWindow(QMainWindow, FORM_CLASS):
             timeout=self.timeOut
             )
         
+        self.button_handler()
+        
     def button_handler(self):
         """
         Function to handle the button clicks and connect them to the functions
@@ -75,7 +77,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.statusLabel.setText("Scanning...")
 
         # Send the start signal to the arduino
-        self.port.write(b'1')
+        self.port.write(bytes('1', 'utf-8'))
         
 
     def stopScan(self):
@@ -84,7 +86,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Input: Button click
         Output: Serial command 0 to arduino
         """
-        self.port.write(b'0')
+        self.port.write(bytes('0', 'utf-8'))
         self.statusLabel.setText("Scanning Stopped")
 
     def updatePort(self):
