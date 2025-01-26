@@ -1,6 +1,7 @@
 # Basic package imports
 import sys
 import os
+import glob
 import configparser
 
 # Import communication packages
@@ -22,6 +23,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
     def __init__(self, parent=None):
         super().__init__(parent)
         QMainWindow.__init__(self)
+        self.setupUi(self)
 
         # Instance variables for real time data
         self.thread = None
@@ -39,6 +41,10 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.baudRate = self.ports_info['baudrate']
         self.timeOut = int(self.ports_info['timeout'])
 
+        # Scan for a list of available ports
+        port_list = self.serial_ports()
+        self.portCombo.addItems(port_list)
+
         # Find the usb connected devices
         self.port = serial.Serial(
             port=self.comPort, 
@@ -47,32 +53,95 @@ class MainWindow(QMainWindow, FORM_CLASS):
             )
         
     def button_handler(self):
-        self.pb_start.clicked.connect(self.startScan)
-        self.pb_quit.clicked.connect(self.stopScan)
+        """
+        Function to handle the button clicks and connect them to the functions
+        """
+        self.pushButtonStart.clicked.connect(self.startScan)
+        self.pushButtonStop.clicked.connect(self.stopScan)
+        self.pushButtonSave.clicked.connect(self.saveFile)
 
     def startScan(self):
+        """
+        Function to start the scanning process
+        Input: Button click
+        Output: Serial command 1 to arduino
+        """
         # Grab the updated port info
         self.updatePort()
         self.updateBaud()
         self.updateTimeout()
 
-        # Send the start signal to the arduino
-        self.port.write(b'1')
         # Update the status label
         self.statusLabel.setText("Scanning...")
 
+        # Send the start signal to the arduino
+        self.port.write(b'1')
+        
+
     def stopScan(self):
+        """
+        Function to stop the scanning process
+        Input: Button click
+        Output: Serial command 0 to arduino
+        """
         self.port.write(b'0')
         self.statusLabel.setText("Scanning Stopped")
 
     def updatePort(self):
+        """
+        Fucntion to update the port information
+        Input: Combobox selection
+        Output: Updated port information to class variable
+        """
         self.comPort = self.portCombo.currentText()
 
     def updateBaud(self):
+        """
+        Function to update the baud rate information
+        Input: Combobox selection  
+        Output: Updated baud rate information to class variable
+        """
         self.baudRate = int(self.baudCombo.currentText())
 
     def updateTimeout(self):
+        """
+        Function to update the timeout information
+        Input: Combobox selection
+        Output: Updated timeout information to class variable
+        """
         self.timeOut = int(self.timeoutCombo.currentText())
+
+    def saveFile(self):
+        pass
+
+    @staticmethod
+    def serial_ports():
+        """ Lists serial port names
+
+            :raises EnvironmentError:
+                On unsupported or unknown platforms
+            :returns:
+                A list of the serial ports available on the system
+
+            Function by: tfeldmann
+        """
+        if sys.platform.startswith('win'):
+            ports = ['COM%s' % (i + 1) for i in range(256)]
+        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+            # this excludes your current terminal "/dev/tty"
+            ports = glob.glob('/dev/tty[A-Za-z]*')
+        else:
+            raise EnvironmentError('Unsupported platform')
+
+        result = []
+        for port in ports:
+            try:
+                s = serial.Serial(port)
+                s.close()
+                result.append(port)
+            except (OSError, serial.SerialException):
+                pass
+        return result
 
 if __name__ == "__main__":
     # Create the application instance
