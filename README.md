@@ -12,7 +12,6 @@
 
 <p>
     This project is a capstone for UWindsors mechatronics program. We wanted to kick it up a notch and build a custom UI for PC integration as well as a stand alone touch ui driven by raspberry pi. 
-
     The hardware of the project is driven by Arduino Uno. 
 <p>
 <br/>
