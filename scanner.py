@@ -8,17 +8,20 @@ import serial
 
 # PyQt5 UI imports
 import PyQt5.uic
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 
 # Setup relative path and grab UI file
 path = os.getcwd()
-FORM_CLASS, _ = PyQt5.uic.loadUiType(path + "\\UI\\scanner.ui")
+ui_path = os.path.join(path, "Assets", "scanner.ui")
+print(ui_path)
+FORM_CLASS, _ = PyQt5.uic.loadUiType(ui_path)
 
 # Main window class
 class MainWindow(QMainWindow, FORM_CLASS):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        QMainWindow.__init__(self)
 
         # Instance variables for real time data
         self.thread = None
@@ -31,9 +34,45 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.config_file = configparser.ConfigParser()
         self.config_file.read(self.path + "\\Config\\config.ini")
 
+        self.ports_info = self.config_file['Communication']
+        self.comPort = self.ports_info['port']
+        self.baudRate = self.ports_info['baudrate']
+        self.timeOut = int(self.ports_info['timeout'])
+
         # Find the usb connected devices
-        self.port = serial.Serial(port='COM3', baudrate=115200, timeout=1)
-        print(self.port)
+        self.port = serial.Serial(
+            port=self.comPort, 
+            baudrate=self.baudRate, 
+            timeout=self.timeOut
+            )
+        
+    def button_handler(self):
+        self.pb_start.clicked.connect(self.startScan)
+        self.pb_quit.clicked.connect(self.stopScan)
+
+    def startScan(self):
+        # Grab the updated port info
+        self.updatePort()
+        self.updateBaud()
+        self.updateTimeout()
+
+        # Send the start signal to the arduino
+        self.port.write(b'1')
+        # Update the status label
+        self.statusLabel.setText("Scanning...")
+
+    def stopScan(self):
+        self.port.write(b'0')
+        self.statusLabel.setText("Scanning Stopped")
+
+    def updatePort(self):
+        self.comPort = self.portCombo.currentText()
+
+    def updateBaud(self):
+        self.baudRate = int(self.baudCombo.currentText())
+
+    def updateTimeout(self):
+        self.timeOut = int(self.timeoutCombo.currentText())
 
 if __name__ == "__main__":
     # Create the application instance
