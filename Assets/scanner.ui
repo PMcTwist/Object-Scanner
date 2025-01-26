@@ -86,7 +86,7 @@ border-radius: 10px;</string>
         <item>
          <widget class="QPushButton" name="pushButtonSave">
           <property name="text">
-           <string>Save</string>
+           <string>Save CSV File</string>
           </property>
          </widget>
         </item>
