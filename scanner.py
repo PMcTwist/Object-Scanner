@@ -3,6 +3,7 @@ import sys
 import os
 import glob
 import configparser
+import datetime
 
 # Import communication packages
 import serial
@@ -159,7 +160,18 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.saveData.append(distance)
 
     def saveFile(self):
-        pass
+        """
+        Function to save the scanned data to a file
+        Input: Button click
+        Output: Save the data to a file
+        """
+        # Get current timestamp
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Open the file and write the save array
+        with open(self.path + f"\\Data\\{timestamp}-scanData.csv", "w") as file:
+            for data in self.saveData:
+                file.write(data + "\n")
 
     @staticmethod
     def serial_ports():
