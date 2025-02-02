@@ -10,6 +10,10 @@ import serial
 # PyQt5 UI imports
 import PyQt5.uic
 from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtCore import QThread
+
+# Custom Packages
+from worker import Worker
 
 
 # Setup relative path and grab UI file
@@ -36,22 +40,21 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.config_file = configparser.ConfigParser()
         self.config_file.read(self.path + "\\Config\\config.ini")
 
-        self.ports_info = self.config_file['Communication']
-        self.comPort = self.ports_info['port']
-        self.baudRate = self.ports_info['baudrate']
-        self.timeOut = int(self.ports_info['timeout'])
-
         # Scan for a list of available ports
         port_list = self.serial_ports()
         self.portCombo.addItems(port_list)
 
         # Find the usb connected devices
         self.port = serial.Serial(
-            port=self.comPort, 
-            baudrate=self.baudRate, 
-            timeout=self.timeOut
+            port=None, 
+            baudrate=0, 
+            timeout=0
             )
         
+        # Set the empty array to store the scan data
+        self.saveData = []
+        
+        # Call the button handler function to connect the UI to methods
         self.button_handler()
         
     def button_handler(self):
@@ -78,8 +81,33 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Send the start signal to the arduino
         self.port.write(bytes('1', 'utf-8'))
-        
 
+        # Start the worker thread and start a worker instance
+        self.worker = Worker(
+            serial_port=self.port,
+            baud=self.baudRate,
+            timeout=self.timeOut
+            )
+        self.thread = QThread()
+        self.worker.moveToThread(self.thread)
+
+        # Conenct to the instance and wait for data
+        self.thread.started.connect(self.worker.run)
+        self.worker.error_text.connect(self.error_handler)
+        self.worker.distance_reading.connect(self.update_distance)
+        self.thread.start()
+
+        self.pushButtonStop.setEnabled(True)
+        self.pushButtonStart.setEnabled(False)
+
+    def error_handler(self, error):
+        """
+        Function to handle the error messages
+        Input: Error message
+        Output: Error message to the status label
+        """
+        self.statusLabel.setText(error)
+        
     def stopScan(self):
         """
         Function to stop the scanning process
@@ -88,6 +116,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         """
         self.port.write(bytes('0', 'utf-8'))
         self.statusLabel.setText("Scanning Stopped")
+
+        self.thread.terminate()
+
+        self.pushButtonStop.setEnabled(False)
+        self.pushButtonStart.setEnabled(True)
 
     def updatePort(self):
         """
@@ -112,6 +145,18 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Output: Updated timeout information to class variable
         """
         self.timeOut = int(self.timeoutCombo.currentText())
+
+    def updateDisatace(self, distance):
+        """
+        Function to update the distance information
+        Input: Distance reading from worker thread
+        Output: Updated distance information to the UI
+        """
+        # Display last scanned data to the label
+        self.rawDataLabel.setText(distance)
+
+        # Append data to the save array
+        self.saveData.append(distance)
 
     def saveFile(self):
         pass
@@ -144,6 +189,9 @@ class MainWindow(QMainWindow, FORM_CLASS):
             except (OSError, serial.SerialException):
                 pass
         return result
+
+
+
 
 if __name__ == "__main__":
     # Create the application instance
