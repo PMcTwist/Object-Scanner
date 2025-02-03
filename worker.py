@@ -4,11 +4,11 @@ import serial
 class Worker(QObject):
     """ Worker thread for running loops """
 
-    distance_reading = pyqtSignal([float])
+    distance_reading = pyqtSignal([str])
     # Any returned errors
     error_text = pyqtSignal([str])
 
-    def __init__(self, serial_port, baud, timeout, *args, **kwargs):
+    def __init__(self, serial_port, *args, **kwargs):
         super(Worker, self).__init__()
         self.args = args
         self.kwargs = kwargs
@@ -16,8 +16,11 @@ class Worker(QObject):
         # Flags for connection errors
         self.unplugged = 0
 
-        # Ports, Baud, and Timeout sent by main class to worker class for use
-        self.open_port = serial.Serial(serial_port, baud, timeout=timeout)
+        # Port sent by main class to worker class for use
+        self.open_port = serial_port
+
+        # Flag to check if the thread is running
+        self.running = True
 
     @pyqtSlot()
     def run(self):
@@ -35,7 +38,15 @@ class Worker(QObject):
             self.unplugged = 1
 
         # Main loop
-        while True:
+
+        # Send the start signal to the arduino
+        try:
+            self.open_port.write(bytes('1', 'utf-8'))
+        except serial.SerialException as e:
+            self.error_text.emit(str(e))
+            self.unplugged = 1
+
+        while self.running:
             try:
                 # Get the distance reading
                 distance_num = self.open_port.readline().decode("utf-8").strip()
@@ -46,3 +57,13 @@ class Worker(QObject):
             except serial.SerialException as e:
                 self.error_text.emit(str(e))
                 self.unplugged = 1
+
+    def stop(self):
+        """
+        Function to stop the worker thread
+        Input: Stop signal from main window
+        Output: Set running flag to flase
+        """
+        self.running = False
+        self.open_port.write(bytes('0', 'utf-8'))
+        self.open_port.close()
