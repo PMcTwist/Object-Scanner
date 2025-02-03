@@ -47,9 +47,9 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Find the usb connected devices
         self.port = serial.Serial(
-            port=None, 
-            baudrate=0, 
-            timeout=0
+            port=self.portCombo.currentText(), 
+            baudrate=int(self.baudCombo.currentText()), 
+            timeout=int(self.timeoutCombo.currentText())
             )
         
         # Set the empty array to store the scan data
@@ -80,22 +80,15 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Update the status label
         self.statusLabel.setText("Scanning...")
 
-        # Send the start signal to the arduino
-        self.port.write(bytes('1', 'utf-8'))
-
         # Start the worker thread and start a worker instance
-        self.worker = Worker(
-            serial_port=self.port,
-            baud=self.baudRate,
-            timeout=self.timeOut
-            )
         self.thread = QThread()
+        self.worker = Worker(self.port)
         self.worker.moveToThread(self.thread)
 
         # Conenct to the instance and wait for data
         self.thread.started.connect(self.worker.run)
         self.worker.error_text.connect(self.error_handler)
-        self.worker.distance_reading.connect(self.update_distance)
+        self.worker.distance_reading.connect(self.updateDistance)
         self.thread.start()
 
         self.pushButtonStop.setEnabled(True)
@@ -115,10 +108,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Input: Button click
         Output: Serial command 0 to arduino
         """
-        self.port.write(bytes('0', 'utf-8'))
         self.statusLabel.setText("Scanning Stopped")
 
-        self.thread.terminate()
+        self.worker.stop()               
+        self.thread.quit()          # Tell the thread to exit its event loop
+        self.thread.wait()          # Wait for the thread to actually exit
 
         self.pushButtonStop.setEnabled(False)
         self.pushButtonStart.setEnabled(True)
@@ -147,7 +141,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         """
         self.timeOut = int(self.timeoutCombo.currentText())
 
-    def updateDisatace(self, distance):
+    def updateDistance(self, distance):
         """
         Function to update the distance information
         Input: Distance reading from worker thread
@@ -166,7 +160,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Output: Save the data to a file
         """
         # Get current timestamp
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
         # Open the file and write the save array
         with open(self.path + f"\\Data\\{timestamp}-scanData.csv", "w") as file:
