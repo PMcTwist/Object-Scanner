@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Path to your virtual environment and Python script
-VENV_PATH="/home/pi/scanner_venv"  # Adjust this to your venv location
-PYTHON_SCRIPT="/home/pi/Desktop/Python UI/scanner.py"  # Adjust this to your script's location
+VENV_PATH="/home/maynard/scanner_venv"  # Adjust this to your venv location
+PYTHON_SCRIPT="/home/maynard/Desktop/Python UI/scanner.py"  # Adjust this to your script's location
 
 # Activate the virtual environment
 source "$VENV_PATH/bin/activate"
