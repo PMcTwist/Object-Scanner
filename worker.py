@@ -64,6 +64,8 @@ class Worker(QObject):
         Input: Stop signal from main window
         Output: Set running flag to flase
         """
-        self.running = False
         self.open_port.write(bytes('0', 'utf-8'))
+        
+        self.running = False
+        
         self.open_port.close()

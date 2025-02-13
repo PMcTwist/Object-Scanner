@@ -54,6 +54,10 @@ class MainWindow(QMainWindow, FORM_CLASS):
         
         # Set the empty array to store the scan data
         self.saveData = []
+
+        # Create the worker thread and worker instance
+        self.thread = QThread()
+        self.worker = Worker(self.port)
         
         # Call the button handler function to connect the UI to methods
         self.button_handler()
@@ -81,11 +85,9 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.statusLabel.setText("Scanning...")
 
         # Start the worker thread and start a worker instance
-        self.thread = QThread()
-        self.worker = Worker(self.port)
         self.worker.moveToThread(self.thread)
 
-        # Conenct to the instance and wait for data
+        # Connect to the instance and wait for data
         self.thread.started.connect(self.worker.run)
         self.worker.error_text.connect(self.error_handler)
         self.worker.distance_reading.connect(self.updateDistance)
@@ -205,7 +207,7 @@ if __name__ == "__main__":
 
     # Create and show the main window
     window = MainWindow()
-    window.show()
+    window.showMaximized()
 
     # Execute the application
     sys.exit(app.exec_())
