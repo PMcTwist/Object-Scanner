@@ -154,6 +154,12 @@ QPushButton:hover {
     background-color: darkgreen;
 }
 
+QPushButton#startButton:disabled {
+    background-color: darkgreen;
+    color: #ccc;
+    border: 2px solid #aaa;
+}
+
 QPushButton:pressed {
     background-color: lightgreen;
 }</string>
@@ -165,6 +171,9 @@ QPushButton:pressed {
         </item>
         <item>
          <widget class="QPushButton" name="pushButtonStop">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="minimumSize">
            <size>
             <width>0</width>
@@ -183,6 +192,12 @@ QPushButton:pressed {
 
 QPushButton:hover {
     background-color: darkred;
+}
+
+QPushButton#stopButton:disabled {
+    background-color: darkred;
+    color: darkgrey;
+    border: 2px solid darkgrey;
 }
 
 QPushButton:pressed {
