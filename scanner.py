@@ -8,6 +8,9 @@ import datetime
 # Import communication packages
 import serial
 
+# Import plotting packages
+import matplotlib.pyplot as plt
+
 # PyQt5 UI imports
 import PyQt5.uic
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -15,7 +18,6 @@ from PyQt5.QtCore import QThread
 
 # Custom Packages
 from worker import Worker
-from plotter import modelPlotter
 
 
 # Setup relative path and grab UI file
@@ -163,7 +165,24 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Output: Updated model widget on UI
         """
         for i in self.saveData:
-            modelPlotter(self.saveData[i])
+            # Setup the figure and axis for model
+            fig = plt.figure()
+            ax = fig.add_subplot(projection='3d')
+
+            # Unpack the data
+            x = i[0]
+            y = i[1]
+            z = i[2]
+
+            # Plot the data
+            ax.plot_surface(x, y, z, cmap='viridis')
+            ax.set_aspect('equal')
+
+            # Turn off graphy stuff
+            ax.axis('off')
+            
+            # Save the plot to a variable
+            model = plt.draw()
 
     def saveFile(self):
         """
