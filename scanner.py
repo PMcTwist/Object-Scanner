@@ -15,6 +15,7 @@ from PyQt5.QtCore import QThread
 
 # Custom Packages
 from worker import Worker
+from plotter import modelPlotter
 
 
 # Setup relative path and grab UI file
@@ -154,6 +155,15 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Append data to the save array
         self.saveData.append(distance)
+
+    def updateModel(self):
+        """
+        Function to update the model widget
+        Input: Model data from array used to plot model
+        Output: Updated model widget on UI
+        """
+        for i in self.saveData:
+            modelPlotter(self.saveData[i])
 
     def saveFile(self):
         """
