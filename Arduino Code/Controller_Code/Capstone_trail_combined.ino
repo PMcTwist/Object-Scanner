@@ -12,16 +12,18 @@ int16_t tfAddr = TFL_DEF_ADR;  // use this default I2C address
 
 // ========== Platform global Variables =====================
 // This section is for the Y-axis
-const float stepAngle = 1.8;
+const float y-StepAngle = 1.8;
 const float platformRadius = 100; // in mm
 
 // Platform Calculation Functions
-const float stepsPerRev = 360/stepAngle;
+const float stepsPerRev = 360/y-StepAngle;
 const float platformCircumference = 2.0 * 3.1415926535 * platformRadius;
 const float y-DistancePerStep = platformCircumference / stepsPerRev;
 
 // ========= Threaded Rod Global Variables ===================
 // This section is for the Z-axis
+const float z-StepAngle = 1.8;
+
 
 
 
@@ -48,8 +50,12 @@ AccelStepper stepperZ(motorZInterfaceType, Z_STEP_PIN, Z_DIR_PIN);
 bool running = false;         // flag for state
 
 // Variable to hold travel distances
+const float x_dist = 0.0;
 const float y-axis_total_distance = 0.0;
 const float z-axis_total_distance = 0.0;
+
+// Array of data to send
+int dataArray[3];
 
 
 // Initialization Function
@@ -107,8 +113,12 @@ void loop() {
           y-axis_total_distance += y-DistancePerStep;
 
           // Meansure X Distance from Sensor
-          Serial.println(tfDist, -2);
+          x_dist = tfDist * 10;
         }
+
+        // Update the dataArray to hold the X, Y, Z values to send to HMI
+        dataArray = {x_dist, y-axis_total_distance, z-axis_total_distance};
+        Serial.println(dataArray);
       }    
     } else {
       tflI2C.printStatus();
