@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def function(x, y, z):
+def modelPlotter(x, y, z):
     """
     Input - x, y, z measurements
     Output - 3D plot of the measurements
