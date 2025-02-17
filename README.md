@@ -7,7 +7,7 @@ The hardware of the project is driven by Arduino Uno and Raspberry Pi.
 
 The basic concept is an x, y, z measurement taken from a rotating platform with a threaded rod with a distance sensor on it. Pretty simple in concept. 
 
-![First CAD](/Assets/assets/model.png)
+![First CAD](/Assets/assets/model.jpg)
 
 ## Implemenatation
 
@@ -17,7 +17,7 @@ We started out with a few Nema17 motors, TF-Luna LiDAR sensor, and an arduino.
 
 From there a basic UI was made with PyQt5 and QtDesigner.
 
-![Basic UI](/Assets/assets/UI.png)
+![Basic UI](/Assets/assets/UI.jpg)
 
 Including a CNC shield board and A4988 drivers to drive the motors allowed for microstepping for a better resolution of scan.
 
@@ -29,7 +29,7 @@ To take it over the top, the addition of a raspberry pi and touch screen for ser
 
 Next, updating the CAD to refelct the real components and the measurments we need for a frame.
 
-![CAD Update](/Assets/assets/week4-CAD.png)
+![CAD Update](/Assets/assets/week4-CAD.jpg)
 
 
 ## Contacts
