@@ -14,7 +14,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # PyQt5 UI imports
 import PyQt5.uic
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
 from PyQt5.QtCore import QThread
 
 # Custom Packages
@@ -56,17 +56,29 @@ class MainWindow(QMainWindow, FORM_CLASS):
             timeout=int(self.timeoutCombo.currentText())
             )
         
+        # Find the placeholder widget for the model
+        placeholder_widget = self.findChild(QWidget, "scanWidget")
+
+        # Create a layout for the placeholder if it doesn't have one
+        layout = placeholder_widget.layout()
+        if not layout:
+            layout = QVBoxLayout(placeholder_widget)
+            placeholder_widget.setLayout(layout)
+
         # Setup the figure and axis for model
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(projection='3d')
 
         # Initial plot data for 0 point
-        self.surface = self.ax.scatter3D(0, 0, 0, cmap='viridis')
+        self.surface = self.ax.scatter(0, 0, 0, color='blue')
         self.ax.set_aspect('equal')
         self.ax.axis('off')
 
         # Create the canvas to render on
         self.canvas = FigureCanvas(self.fig)
+
+        # Add the plot canvas to the placeholder widget's layout
+        layout.addWidget(self.canvas)
         
         # Set the empty array to store the scan data
         self.saveData = []
@@ -187,7 +199,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
             self.surface.remove()
 
             # Plot the updated surface
-            self.surface = self.ax.scatter3D(x, y, z, cmap='viridis')
+            self.surface = self.ax.scatter(x, y, z, color='blue')
 
         # Redraw the canvas with updates
         self.canvas.draw()
