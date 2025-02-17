@@ -32,6 +32,14 @@ Next, updating the CAD to refelct the real components and the measurments we nee
 ![CAD Update](/Assets/assets/week4-CAD.jpg)
 
 
+## Setup
+
+Users can extract the provided exe (For Windows) in releases or use the Pi-HMI directly on the device. Linux users can use the python files directly or setup the same system service we called. 
+
+The scanner has two modes of operation. <br/>
+   1 - Pi-HMI <br/>
+   2 - USB Interface 
+
 ## Contacts
 🤓 - Kevin -  <br/>
 🤬 - Pat - patmaynard452@hotmail.com
