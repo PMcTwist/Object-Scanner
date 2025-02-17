@@ -10,6 +10,7 @@ import serial
 
 # Import plotting packages
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # PyQt5 UI imports
 import PyQt5.uic
@@ -54,6 +55,18 @@ class MainWindow(QMainWindow, FORM_CLASS):
             baudrate=int(self.baudCombo.currentText()), 
             timeout=int(self.timeoutCombo.currentText())
             )
+        
+        # Setup the figure and axis for model
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(projection='3d')
+
+        # Initial plot data for 0 point
+        self.surface = self.ax.scatter3D(0, 0, 0, cmap='viridis')
+        self.ax.set_aspect('equal')
+        self.ax.axis('off')
+
+        # Create the canvas to render on
+        self.canvas = FigureCanvas(self.fig)
         
         # Set the empty array to store the scan data
         self.saveData = []
@@ -165,24 +178,19 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Output: Updated model widget on UI
         """
         for i in self.saveData:
-            # Setup the figure and axis for model
-            fig = plt.figure()
-            ax = fig.add_subplot(projection='3d')
-
             # Unpack the data
             x = i[0]
             y = i[1]
             z = i[2]
 
-            # Plot the data
-            ax.plot_surface(x, y, z, cmap='viridis')
-            ax.set_aspect('equal')
+            # Remove the old plot
+            self.surface.remove()
 
-            # Turn off graphy stuff
-            ax.axis('off')
-            
-            # Save the plot to a variable
-            model = plt.draw()
+            # Plot the updated surface
+            self.surface = self.ax.scatter3D(x, y, z, cmap='viridis')
+
+        # Redraw the canvas with updates
+        self.canvas.draw()
 
     def saveFile(self):
         """
