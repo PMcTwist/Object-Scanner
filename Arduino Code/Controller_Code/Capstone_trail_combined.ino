@@ -26,8 +26,6 @@ const float rodPitch = 2; // in mm
 const float z_DistancePerStep = rodPitch / stepsPerRev;
 
 
-
-
 // ======== Setup the Stepper global variables ===============
 #define ENABLE_PIN 8   // Enables the CNC sheild 
 
@@ -72,10 +70,7 @@ void setup() {
   stepperY.setMaxSpeed(500);
   stepperZ.setMaxSpeed(500);
 
-  // Set intial flag for running state
-  running = false;
-  stopFlag = false;
-
+  Serial.print("Ready!");
 }
 
 // Runtime Function
@@ -149,9 +144,14 @@ void loop() {
   delay (50);
 }
 
+
 void checkForUpdates() {
   if (Serial.available() > 0) {      // Check if there's serial input
     char inputChar = Serial.read();  // Read the input character from the UI button
+    inputChar = char(inputChar);     // Ensure it's treated as a clean character
+    inputChar = inputChar & 0x7F;    // Strip any potential high-order bits or noise
+    Serial.println(inputChar);       // Print the input for debugging
+
     Serial.println(inputChar);
     if (inputChar == '1') {          // Start scanning
       if (!running){
