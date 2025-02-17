@@ -4,6 +4,7 @@ import os
 import glob
 import configparser
 import datetime
+import re
 
 # Import communication packages
 import serial
@@ -177,11 +178,44 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Input: Distance reading from worker thread
         Output: Updated distance information to the UI
         """
-        # Display last scanned data to the label
-        self.rawDataLabel.setText(distance)
+        data = self.is_valid_xyz_data(distance)
 
-        # Append data to the save array
-        self.saveData.append(distance)
+        if data:
+            # Display last scanned data to the label
+            self.rawDataLabel.setText(str(data))
+
+            # Append data to the save array
+            self.saveData.append(data)
+
+            # Update the model widget
+            self.updateModel()
+        else:
+            pass
+
+    def is_valid_xyz_data(self, data):
+        """
+        Checks if the input string is a valid CSV representing (x, y, z) coordinates.
+        Input: data (str): The input string to validate.
+        Output: tuple or None: Returns (x, y, z) as floats if valid, or None if invalid.
+        """
+        # print(f"Raw data received: '{data}'")
+
+        try:
+            # Check if the data matches the pattern "float, float, float"
+            pattern = r"^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$"
+            match = re.match(pattern, data.strip())
+
+            if match:
+                # Extract and convert to floats
+                x, y, z = map(float, data.split(","))
+                # print(f"Valid data parsed: x={x}, y={y}, z={z}")
+                return x, y, z
+            else:
+                print("Invalid data format: Does not match expected pattern")
+                return None
+        except Exception as e:
+            print(f"Error parsing data: {e}")
+            return None
 
     def updateModel(self):
         """
@@ -196,10 +230,10 @@ class MainWindow(QMainWindow, FORM_CLASS):
             z = i[2]
 
             # Remove the old plot
-            self.surface.remove()
+            self.ax.clear()
 
             # Plot the updated surface
-            self.surface = self.ax.scatter(x, y, z, color='blue')
+            self.ax.scatter(x, y, z, color='blue')
 
         # Redraw the canvas with updates
         self.canvas.draw()
@@ -256,7 +290,7 @@ if __name__ == "__main__":
 
     # Create and show the main window
     window = MainWindow()
-    window.showMaximized()
+    window.show()
 
     # Execute the application
     sys.exit(app.exec_())
