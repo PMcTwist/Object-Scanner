@@ -20,6 +20,7 @@ from PyQt5.QtCore import QThread
 
 # Custom Packages
 from worker import Worker
+from grapher import DataGrapher
 
 
 # Setup relative path and grab UI file
@@ -46,6 +47,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.config_file = configparser.ConfigParser()
         self.config_file.read(self.path + "\\Config\\config.ini")
 
+        # ========== Serial Communication Stuff ========== #
         # Scan for a list of available ports
         port_list = self.serial_ports()
         self.portCombo.addItems(port_list)
@@ -57,6 +59,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
             timeout=int(self.timeoutCombo.currentText())
             )
         
+        # ==========  Graph Stuff ========== #
         # Find the placeholder widget for the model
         placeholder_widget = self.findChild(QWidget, "scanWidget")
 
@@ -71,9 +74,9 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.ax = self.fig.add_subplot(projection='3d')
 
         # Initial plot data for 0 point
-        self.surface = self.ax.scatter(0, 0, 0, color='blue')
+        self.surface = self.ax.scatter(0, 0, 0, color='blue', marker='o', s=10)
         self.ax.set_aspect('equal')
-        self.ax.axis('off')
+        # self.ax.axis('off')
 
         # Create the canvas to render on
         self.canvas = FigureCanvas(self.fig)
@@ -81,13 +84,19 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Add the plot canvas to the placeholder widget's layout
         layout.addWidget(self.canvas)
         
+        # =========== Threading Stuff =========== #
         # Set the empty array to store the scan data
         self.saveData = []
 
         # Create the worker thread and worker instance
-        self.thread = QThread()
+        self.data_thread = QThread()
         self.worker = Worker(self.port)
+
+        # Create the graph thread and grapher instance
+        self.graph_thread = QThread()
+        self.grapher = DataGrapher()
         
+        # ============ UI Event Handler Call ============ #
         # Call the button handler function to connect the UI to methods
         self.button_handler()
         
@@ -113,14 +122,23 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Update the status label
         self.statusLabel.setText("Scanning...")
 
-        # Start the worker thread and start a worker instance
-        self.worker.moveToThread(self.thread)
+        # Move instances to threads
+        self.worker.moveToThread(self.data_thread)
+        self.grapher.moveToThread(self.graph_thread)
 
         # Connect to the instance and wait for data
-        self.thread.started.connect(self.worker.run)
+        self.data_thread.started.connect(self.worker.run)
         self.worker.error_text.connect(self.error_handler)
         self.worker.distance_reading.connect(self.updateDistance)
-        self.thread.start()
+        
+        # Connect the grapher thread to the worker thread
+        self.grapher.started.connect(self.grapher.run)
+        self.grapher.data_generated.connect(self.updateDistance) # Send the data to the main thread
+
+        # Start both threads
+        self.data_thread.start()
+        self.graph_thread.start()
+
 
         self.pushButtonStop.setEnabled(True)
         self.pushButtonStart.setEnabled(False)
@@ -184,59 +202,59 @@ class MainWindow(QMainWindow, FORM_CLASS):
             # Display last scanned data to the label
             self.rawDataLabel.setText(str(data))
 
-            # Append data to the save array
-            self.saveData.append(data)
+            # Break data in x, y, z block to be appended
+            data_block = [data[0], data[1], data[2]]
 
-            # Update the model widget
-            self.updateModel()
+            # Append data block to the save array
+            self.saveData.append(data_block)
         else:
             pass
 
-    def is_valid_xyz_data(self, data):
-        """
-        Checks if the input string is a valid CSV representing (x, y, z) coordinates.
-        Input: data (str): The input string to validate.
-        Output: tuple or None: Returns (x, y, z) as floats if valid, or None if invalid.
-        """
-        # print(f"Raw data received: '{data}'")
+    # def is_valid_xyz_data(self, data):
+    #     """
+    #     Checks if the input string is a valid CSV representing (x, y, z) coordinates.
+    #     Input: data (str): The input string to validate.
+    #     Output: tuple or None: Returns (x, y, z) as floats if valid, or None if invalid.
+    #     """
+    #     # print(f"Raw data received: '{data}'")
 
-        try:
-            # Check if the data matches the pattern "float, float, float"
-            pattern = r"^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$"
-            match = re.match(pattern, data.strip())
+    #     try:
+    #         # Check if the data matches the pattern "float, float, float"
+    #         pattern = r"^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$"
+    #         match = re.match(pattern, data.strip())
 
-            if match:
-                # Extract and convert to floats
-                x, y, z = map(float, data.split(","))
-                # print(f"Valid data parsed: x={x}, y={y}, z={z}")
-                return x, y, z
-            else:
-                print("Invalid data format: Does not match expected pattern")
-                return None
-        except Exception as e:
-            print(f"Error parsing data: {e}")
-            return None
+    #         if match:
+    #             # Extract and convert to floats
+    #             x, y, z = map(float, data.split(","))
+    #             # print(f"Valid data parsed: x={x}, y={y}, z={z}")
+    #             return x, y, z
+    #         else:
+    #             print("Invalid data format: Does not match expected pattern")
+    #             return None
+    #     except Exception as e:
+    #         print(f"Error parsing data: {e}")
+    #         return None
 
-    def updateModel(self):
-        """
-        Function to update the model widget
-        Input: Model data from array used to plot model
-        Output: Updated model widget on UI
-        """
-        for i in self.saveData:
-            # Unpack the data
-            x = i[0]
-            y = i[1]
-            z = i[2]
+    # def updateModel(self):
+    #     """
+    #     Function to update the model widget
+    #     Input: Model data from array used to plot model
+    #     Output: Updated model widget on UI
+    #     """
+    #     for i in self.saveData:
+    #         # Unpack the data
+    #         x = i[0]
+    #         y = i[1]
+    #         z = i[2]
 
-            # Remove the old plot
-            self.ax.clear()
+    #         # Remove the old plot
+    #         self.ax.clear()
 
-            # Plot the updated surface
-            self.ax.scatter(x, y, z, color='blue')
+    #         # Plot the updated surface
+    #         self.ax.scatter(x, y, z, color='blue')
 
-        # Redraw the canvas with updates
-        self.canvas.draw()
+    #     # Redraw the canvas with updates
+    #     self.canvas.draw()
 
     def saveFile(self):
         """
