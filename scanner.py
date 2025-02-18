@@ -36,10 +36,6 @@ class MainWindow(QMainWindow, FORM_CLASS):
         QMainWindow.__init__(self)
         self.setupUi(self)
 
-        # Instance variables for real time data
-        self.thread = None
-        self.worker = None
-
         # Get the current directory
         self.path = os.getcwd()
 
@@ -47,7 +43,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.config_file = configparser.ConfigParser()
         self.config_file.read(self.path + "\\Config\\config.ini")
 
-        # ========== Serial Communication Stuff ========== #
+        # ========== Serial Communication Stuff ========== #.
         # Scan for a list of available ports
         port_list = self.serial_ports()
         self.portCombo.addItems(port_list)
