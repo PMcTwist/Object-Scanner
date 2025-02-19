@@ -93,7 +93,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Create the graph thread and grapher instance
         self.graph_thread = QThread()
-        self.grapher = DataGrapher(self.port)
+        self.grapher = DataGrapher(self.data_queue)
 
         # Send obejcts to the grapher thread
         self.grapher.set_canvas(self.canvas, self.ax) 
