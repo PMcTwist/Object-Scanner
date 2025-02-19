@@ -135,6 +135,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         
         # Connect the grapher thread to the worker thread
         self.graph_thread.started.connect(self.grapher.run)
+        self.grapher.updateProgressSignal.connect(self.updateProgress)
 
         # Move instances to threads
         self.worker.moveToThread(self.data_thread)
@@ -147,6 +148,14 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         self.pushButtonStop.setEnabled(True)
         self.pushButtonStart.setEnabled(False)
+
+    def updateProgress(self, progress):
+        """
+        Function to update the progress bar
+        Input: Progress value
+        Output: Updated progress bar value
+        """
+        self.progressBar.setValue(progress)
 
     def error_handler(self, error):
         """
