@@ -2,8 +2,10 @@ from PyQt5.QtCore import QThread, pyqtSignal
 import queue
 
 class DataGrapher(QThread):
-    def __init__(self, data_queue):
+    def __init__(self, data_queue, progressBar):
         super().__init__()
+        # Progress signal
+        self.progressBar = progressBar
 
         # Data queue shared with main thread
         self.data = data_queue
@@ -51,6 +53,11 @@ class DataGrapher(QThread):
 
         # Only update the graph if any z-value has changed
         if new_z_values != self.last_z:
+            # Calculate the progress
+            progress = len([z for z in new_z_values if z > 0]) / len(new_z_values) * 100
+            self.updateProgress(progress)
+
+            # Update the model
             self.last_z = new_z_values
             self.updateModel(data_array)
 
@@ -77,6 +84,17 @@ class DataGrapher(QThread):
 
         # Redraw the canvas with updates
         self.canvas.draw()
+
+    def updateProgress(self, progress):
+        """
+        Function to update the progress bar
+        Input: Progress Z value from check_and_update_graph
+        Output: Updated progress bar on UI
+        """
+        if not self.running or not self.progressBar:
+            return
+
+        self.progressBar.setValue(progress)
 
     def stop(self):
         """
