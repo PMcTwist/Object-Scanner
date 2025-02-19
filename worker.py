@@ -1,10 +1,11 @@
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 import serial
+import re
 
 class Worker(QObject):
     """ Worker thread for running loops """
-
-    distance_reading = pyqtSignal([str])
+    # Signal to send distance reading
+    distance_reading = pyqtSignal(tuple)
     # Any returned errors
     error_text = pyqtSignal([str])
 
@@ -51,8 +52,12 @@ class Worker(QObject):
                 # Get the distance reading
                 distance_num = self.open_port.readline().decode("utf-8").strip()
 
-                # Send the distance reading to the main thread
-                self.distance_reading.emit(distance_num)
+                # Filter out any non-numeric characters
+                distance_num_filtered = self.is_valid_xyz_data(distance_num)
+
+                if distance_num_filtered:
+                    # Send the distance reading to the main thread
+                    self.distance_reading.emit(distance_num_filtered)
 
             except serial.SerialException as e:
                 self.error_text.emit(str(e))
@@ -69,3 +74,26 @@ class Worker(QObject):
         self.running = False
         
         self.open_port.close()
+
+    def is_valid_xyz_data(self, data):
+        """
+        Checks if the input string is a valid CSV representing (x, y, z) coordinates.
+        Input: data (str): The input string to validate.
+        Output: tuple or None: Returns (x, y, z) as floats if valid, or None if invalid.
+        """
+        try:
+            # Check if the data matches the pattern "float, float, float"
+            pattern = r"^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$"
+            match = re.match(pattern, data.strip())
+
+            if match:
+                # Extract and convert to floats
+                x, y, z = map(float, data.split(","))
+                # print(f"Valid data parsed: x={x}, y={y}, z={z}")
+                return x, y, z
+            else:
+                print("Invalid data format: Does not match expected pattern")
+                return None
+        except Exception as e:
+            print(f"Error parsing data: {e}")
+            return None

@@ -4,7 +4,8 @@ import os
 import glob
 import configparser
 import datetime
-import re
+import queue
+import csv
 
 # Import communication packages
 import serial
@@ -81,8 +82,10 @@ class MainWindow(QMainWindow, FORM_CLASS):
         layout.addWidget(self.canvas)
         
         # =========== Threading Stuff =========== #
-        # Set the empty array to store the scan data
+        # Set the empty array to store the scan data to save
         self.saveData = []
+        # Create a thread-safe queue to store data to graph
+        self.data_queue = queue.Queue()
 
         # Create the worker thread and worker instance
         self.data_thread = QThread()
@@ -90,7 +93,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Create the graph thread and grapher instance
         self.graph_thread = QThread()
-        self.grapher = DataGrapher()
+        self.grapher = DataGrapher(self.port)
+
+        # Send obejcts to the grapher thread
+        self.grapher.set_canvas(self.canvas, self.ax) 
+
         
         # ============ UI Event Handler Call ============ #
         # Call the button handler function to connect the UI to methods
@@ -110,17 +117,13 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Input: Button click
         Output: Serial command 1 to arduino
         """
-        # Grab the updated port info
+        # Grab the updated port info from UI
         self.updatePort()
         self.updateBaud()
         self.updateTimeout()
 
         # Update the status label
         self.statusLabel.setText("Scanning...")
-
-        # Move instances to threads
-        self.worker.moveToThread(self.data_thread)
-        self.grapher.moveToThread(self.graph_thread)
 
         # Connect to the instance and wait for data
         self.data_thread.started.connect(self.worker.run)
@@ -129,7 +132,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         
         # Connect the grapher thread to the worker thread
         self.grapher.started.connect(self.grapher.run)
-        self.grapher.data_generated.connect(self.updateDistance) # Send the data to the main thread
+
+
+        # Move instances to threads
+        self.worker.moveToThread(self.data_thread)
+        self.grapher.moveToThread(self.graph_thread)
 
         # Start both threads
         self.data_thread.start()
@@ -155,9 +162,15 @@ class MainWindow(QMainWindow, FORM_CLASS):
         """
         self.statusLabel.setText("Scanning Stopped")
 
+        # Stop the worker thread
         self.worker.stop()               
-        self.thread.quit()          # Tell the thread to exit its event loop
-        self.thread.wait()          # Wait for the thread to actually exit
+        self.data_thread.quit()          # Tell the thread to exit its event loop
+        self.data_thread.wait()          # Wait for the thread to actually exit
+
+        # Stop the grapher thread
+        self.grapher.stop()               
+        self.graph_thread.quit()          # Tell the thread to exit its event loop
+        self.graph_thread.wait()          # Wait for the thread to actually exit
 
         self.pushButtonStop.setEnabled(False)
         self.pushButtonStart.setEnabled(True)
@@ -192,65 +205,22 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Input: Distance reading from worker thread
         Output: Updated distance information to the UI
         """
-        data = self.is_valid_xyz_data(distance)
 
-        if data:
-            # Display last scanned data to the label
-            self.rawDataLabel.setText(str(data))
+        if distance:
+            try:
+                # Display last scanned data to the label
+                self.rawDataLabel.setText(str(distance))
 
-            # Break data in x, y, z block to be appended
-            data_block = [data[0], data[1], data[2]]
+                # Break data in x, y, z block to be appended
+                data_block = [distance[0], distance[1], distance[2]]
 
-            # Append data block to the save array
-            self.saveData.append(data_block)
+                # Append data block to the save array
+                self.saveData.append(data_block)
+                self.data_queue.put(data_block)
+            except Exception as e:
+                print(e)
         else:
             pass
-
-    # def is_valid_xyz_data(self, data):
-    #     """
-    #     Checks if the input string is a valid CSV representing (x, y, z) coordinates.
-    #     Input: data (str): The input string to validate.
-    #     Output: tuple or None: Returns (x, y, z) as floats if valid, or None if invalid.
-    #     """
-    #     # print(f"Raw data received: '{data}'")
-
-    #     try:
-    #         # Check if the data matches the pattern "float, float, float"
-    #         pattern = r"^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$"
-    #         match = re.match(pattern, data.strip())
-
-    #         if match:
-    #             # Extract and convert to floats
-    #             x, y, z = map(float, data.split(","))
-    #             # print(f"Valid data parsed: x={x}, y={y}, z={z}")
-    #             return x, y, z
-    #         else:
-    #             print("Invalid data format: Does not match expected pattern")
-    #             return None
-    #     except Exception as e:
-    #         print(f"Error parsing data: {e}")
-    #         return None
-
-    # def updateModel(self):
-    #     """
-    #     Function to update the model widget
-    #     Input: Model data from array used to plot model
-    #     Output: Updated model widget on UI
-    #     """
-    #     for i in self.saveData:
-    #         # Unpack the data
-    #         x = i[0]
-    #         y = i[1]
-    #         z = i[2]
-
-    #         # Remove the old plot
-    #         self.ax.clear()
-
-    #         # Plot the updated surface
-    #         self.ax.scatter(x, y, z, color='blue')
-
-    #     # Redraw the canvas with updates
-    #     self.canvas.draw()
 
     def saveFile(self):
         """
@@ -263,8 +233,8 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Open the file and write the save array
         with open(self.path + f"\\Data\\{timestamp}-scanData.csv", "w") as file:
-            for data in self.saveData:
-                file.write(data + "\n")
+            writer = csv.writer(file)
+            writer.writerows(self.saveData)
 
     @staticmethod
     def serial_ports():
