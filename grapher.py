@@ -1,54 +1,68 @@
 from PyQt5.QtCore import QThread, pyqtSignal
-import re
+import queue
 
 class DataGrapher(QThread):
-    data_generated = pyqtSignal([str])  # Signal to send raw data
+    def __init__(self, data_queue):
+        super().__init__()
+
+        # Data queue shared with main thread
+        self.data = data_queue
+
+        # State Flag
+        self.running = True
+
+        # Placeholder variables to be passed in
+        self.canvas = None
+        self.ax = None
+        self.last_z = []
 
     def run(self):
-        while True:
-            # Get the raw data from the worker thread
-            raw_data = self.get_data()
-            
-            # Check if the data is valid
-            if self.is_valid_xyz_data(raw_data):
-                # Send the data to the main thread to save later
-                self.data_generated.emit(raw_data)
-
-                # Update the graph with the new data
-                self.updateModel()
-            else:
-                print("Invalid data received")
-
-    def is_valid_xyz_data(self, data):
         """
-        Checks if the input string is a valid CSV representing (x, y, z) coordinates.
-        Input: data (str): The input string to validate.
-        Output: tuple or None: Returns (x, y, z) as floats if valid, or None if invalid.
+        Main graph loop
+        Input: Serial Data
+        Output: Updated model widget
         """
-        try:
-            # Check if the data matches the pattern "float, float, float"
-            pattern = r"^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$"
-            match = re.match(pattern, data.strip())
+        while self.running:
+            try:
+                # Wait for data to be available in the queue
+                data_array = self.data_queue.get(timeout=5)
+                self.check_and_update_graph(data_array)
+            except queue.Empty:
+                continue
 
-            if match:
-                # Extract and convert to floats
-                x, y, z = map(float, data.split(","))
-                # print(f"Valid data parsed: x={x}, y={y}, z={z}")
-                return x, y, z
-            else:
-                print("Invalid data format: Does not match expected pattern")
-                return None
-        except Exception as e:
-            print(f"Error parsing data: {e}")
-            return None
-        
-    def updateModel(self):
+    def set_canvas(self, canvas, ax):
+        """
+        Set the canvas and axes for the grapher worker.
+        Input: Main thread passes the canvas and axes objects
+        Output: Set the canvas and axes objects for the thread instance
+        """
+        self.canvas = canvas
+        self.ax = ax
+
+    def check_and_update_graph(self, data_array):
+        """
+        Check if any `z` values have changed, and if so, update the graph.
+        Input: Data array from the scanner
+        Output: Data passed to graph updater
+        """
+        # Extract the z-values from the new data array
+        new_z_values = [data[2] for data in data_array]
+
+        # Only update the graph if any z-value has changed
+        if new_z_values != self.last_z:
+            self.last_z = new_z_values
+            self.updateModel(data_array)
+
+    def updateModel(self, data):
         """
         Function to update the model widget
         Input: Model data from array used to plot model
         Output: Updated model widget on UI
         """
-        for i in self.saveData:
+        if not self.running or not self.canvas:
+            return
+
+        for i in data:
             # Unpack the data
             x = i[0]
             y = i[1]
@@ -62,3 +76,11 @@ class DataGrapher(QThread):
 
         # Redraw the canvas with updates
         self.canvas.draw()
+
+    def stop(self):
+        """
+        Stop the grapher thread.
+        Input: Stop signal from main thread
+        Output: Set the running flag to False
+        """
+        self.running = False
