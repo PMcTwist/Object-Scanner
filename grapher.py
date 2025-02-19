@@ -1,11 +1,14 @@
-from PyQt5.QtCore import QObject, QTimer
+from PyQt5.QtCore import QObject, QTimer, pyqtSignal, pyqtSlot
 import queue
 
 class DataGrapher(QObject):
+    # Progress signal
+    updateProgressSignal = pyqtSignal(int) 
+
+
     def __init__(self, data_queue, progressBar):
         super().__init__()
-        # Progress signal
-        self.progressBar = progressBar
+        
 
         # Data queue shared with main thread
         self.data = data_queue
@@ -17,6 +20,7 @@ class DataGrapher(QObject):
         self.canvas = None
         self.ax = None
         self.last_z = []
+        self.total_graph_data = []
 
     def run(self):
         """
@@ -56,19 +60,21 @@ class DataGrapher(QObject):
         Input: Data array from the scanner
         Output: Data passed to graph updater
         """
-        print("trying to update graph")
         # Extract the z-values from the new data array
-        new_z_values = [data[2] for data in data_array]
+        new_z_values = data_array[-1]
 
-        # Only update the graph if any z-value has changed
-        if new_z_values != self.last_z:
-            # Calculate the progress
-            progress = len([z for z in new_z_values if z > 0]) / len(new_z_values) * 200
-            self.updateProgress(progress)
+        try:
+            # Only update the graph if any z-value has changed
+            if new_z_values != self.last_z:
+                # Calculate the progress
+                progress = new_z_values * 2
+                self.updateProgress(int(progress))
 
-            # Update the model
-            self.last_z = new_z_values
-            self.updateModel(data_array)
+                # Update the model
+                self.last_z = new_z_values
+                self.updateModel(data_array)
+        except Exception as e:
+                print(e)
 
     def updateModel(self, data):
         """
@@ -78,12 +84,17 @@ class DataGrapher(QObject):
         """
         if not self.running or not self.canvas:
             return
+        
+        print(f"Updating model: {data}")
+        self.total_graph_data.append(data)
 
-        for i in data:
+        for i in self.tota_graph_data:
             # Unpack the data
             x = i[0]
             y = i[1]
             z = i[2]
+
+            print(f"Plotting point: x={x}, y={y}, z={z}")
 
             # Remove the old plot
             self.ax.clear()
@@ -94,18 +105,19 @@ class DataGrapher(QObject):
         # Redraw the canvas with updates
         self.canvas.draw()
 
+    @pyqtSlot()
     def updateProgress(self, progress):
         """
         Function to update the progress bar
         Input: Progress Z value from check_and_update_graph
         Output: Updated progress bar on UI
         """
-        print("updating progress")
-        if not self.running or not self.progressBar:
+        if not self.running:
             return
 
-        print(f"{progress}")
-        self.progressBar.setValue(progress)
+        print(f"Updating progress: {progress}")
+
+        self.updateProgressSignal.emit(progress)
 
     def stop(self):
         """
