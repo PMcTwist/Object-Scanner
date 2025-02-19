@@ -134,7 +134,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.worker.distance_reading.connect(self.updateDistance)
         
         # Connect the grapher thread to the worker thread
-        self.grapher.started.connect(self.grapher.run)
+        self.graph_thread.started.connect(self.grapher.run)
 
         # Move instances to threads
         self.worker.moveToThread(self.data_thread)
