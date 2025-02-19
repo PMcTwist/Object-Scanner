@@ -1,7 +1,7 @@
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QObject, QTimer
 import queue
 
-class DataGrapher(QThread):
+class DataGrapher(QObject):
     def __init__(self, data_queue, progressBar):
         super().__init__()
         # Progress signal
@@ -21,16 +21,25 @@ class DataGrapher(QThread):
     def run(self):
         """
         Main graph loop
-        Input: Serial Data
+        Input: Timer runs when thread is started
+        Output: Call to poll the queue for data
+        """
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.pollQueue)
+        self.timer.start(1000)
+
+    def pollQueue(self):
+        """
+        Poll the queue for new data
+        Input: Serial Data from queue
         Output: Updated model widget
         """
-        while self.running:
-            try:
-                # Wait for data to be available in the queue
-                data_array = self.data_queue.get(timeout=1)
-                self.check_and_update_graph(data_array)
-            except queue.Empty:
-                continue
+        try:
+            # Wait for data to be available in the queue
+            data_array = self.data.get(timeout=1)
+            self.check_and_update_graph(data_array)
+        except queue.Empty:
+            pass
 
     def set_canvas(self, canvas, ax):
         """
@@ -54,7 +63,7 @@ class DataGrapher(QThread):
         # Only update the graph if any z-value has changed
         if new_z_values != self.last_z:
             # Calculate the progress
-            progress = len([z for z in new_z_values if z > 0]) / len(new_z_values) * 100
+            progress = len([z for z in new_z_values if z > 0]) / len(new_z_values) * 200
             self.updateProgress(progress)
 
             # Update the model
@@ -91,9 +100,11 @@ class DataGrapher(QThread):
         Input: Progress Z value from check_and_update_graph
         Output: Updated progress bar on UI
         """
+        print("updating progress")
         if not self.running or not self.progressBar:
             return
 
+        print(f"{progress}")
         self.progressBar.setValue(progress)
 
     def stop(self):
