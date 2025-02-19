@@ -25,7 +25,7 @@ class DataGrapher(QThread):
         while self.running:
             try:
                 # Wait for data to be available in the queue
-                data_array = self.data_queue.get(timeout=5)
+                data_array = self.data_queue.get(timeout=1)
                 self.check_and_update_graph(data_array)
             except queue.Empty:
                 continue
@@ -45,6 +45,7 @@ class DataGrapher(QThread):
         Input: Data array from the scanner
         Output: Data passed to graph updater
         """
+        print("trying to update graph")
         # Extract the z-values from the new data array
         new_z_values = [data[2] for data in data_array]
 
