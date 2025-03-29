@@ -31,6 +31,14 @@ Next, updating the CAD to refelct the real components and the measurments we nee
 
 ![CAD Update](/Assets/assets/week4-CAD.jpg)
 
+After looking into manufacturer STL files, we updated the model to be a 1:1 of the final product.
+
+![Final Cad](/Assets/assets/FullModel.jpg)
+
+Continued development of the UI was needed to get the realtime feedback we are looking for.
+
+![UI Update](/Assets/assets/realTime.gif)
+
 
 ## Setup
 
