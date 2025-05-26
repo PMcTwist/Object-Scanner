@@ -44,6 +44,10 @@ AccelStepper stepperY(motorYInterfaceType, Y_STEP_PIN, Y_DIR_PIN);
 
 AccelStepper stepperZ(motorZInterfaceType, Z_STEP_PIN, Z_DIR_PIN);
 
+// Setup limit switch pins
+#define limitSwitchTop 11  // Top limit switch on pin 11
+#define limitSwitchBot 10   // Home limit switch on pin 10
+
 
 // ========= Setup the state of the machine ========================
 bool running = false;         // flag for state
@@ -77,6 +81,7 @@ void setup() {
 void loop() {
   // Check for initial start signal
   checkForUpdates();
+  checkHome();
 
   // Basic condition for running state (scanning)
   if (running) {
@@ -84,7 +89,9 @@ void loop() {
     if (tflI2C.getData(tfDist, tfAddr))
     {
       // For every step in 360deg of Y motor scan
-      // Then move up 1 step on the Z motor 
+      // Then move up 1 step on the Z motor
+      Serial.print("Distance: ");
+      Serial.println(tfDist); 
       for (int z = 0; z < 200; z++){
         // Check for Serial commands
         checkForUpdates();
@@ -144,6 +151,30 @@ void loop() {
   delay (50);
 }
 
+void checkHome() {
+  bool limitSwitchBotTriggered = digitalRead(limitSwitchBot) == LOW;
+
+  Serial.println()
+
+  while (limitSwitchBotTriggered != true ) {
+    stepperZ.move(-1);
+    stepperZ.run();
+  }
+}
+
+void checkDone() {
+  bool limitSwitchTopTriggered = digitalRead(limitSwitchTop) == LOW;
+
+  if (limitSwitchTopTriggered == true) {
+    // Send 0-stop command to scanner, and go to home position
+    running = false;
+    stopFlag = true;
+    Serial.println("Scanning Stopped");
+
+    checkHome();       // Go home when done
+
+  }
+}
 
 void checkForUpdates() {
   if (Serial.available() > 0) {      // Check if there's serial input
@@ -165,6 +196,8 @@ void checkForUpdates() {
         stopFlag = true;
         Serial.println("Scanning Stopped");
       }
+    } else {                     // Stop Scanning with Done Limit switch
+      checkDone();
     }
   }
 }
