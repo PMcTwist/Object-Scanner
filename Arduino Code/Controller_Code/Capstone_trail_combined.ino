@@ -70,9 +70,13 @@ void setup() {
   pinMode(ENABLE_PIN, OUTPUT);
   digitalWrite(ENABLE_PIN, LOW);  // Enable CNC shield drivers
 
+  // Setup limit switches
+  pinMode(limitSwitchBot, INPUT_PULLUP);
+  pinMode(limitSwitchTop, INPUT_PULLUP);
+
   // Setup Stepper speeds
-  stepperY.setMaxSpeed(500);
-  stepperZ.setMaxSpeed(500);
+  stepperY.setMaxSpeed(200);
+  stepperZ.setMaxSpeed(200);
 
   Serial.print("Ready!");
 }
@@ -81,7 +85,6 @@ void setup() {
 void loop() {
   // Check for initial start signal
   checkForUpdates();
-  checkHome();
 
   // Basic condition for running state (scanning)
   if (running) {
@@ -90,8 +93,8 @@ void loop() {
     {
       // For every step in 360deg of Y motor scan
       // Then move up 1 step on the Z motor
-      Serial.print("Distance: ");
-      Serial.println(tfDist); 
+      // Serial.print("Distance: ");
+      // Serial.println(tfDist); 
       for (int z = 0; z < 200; z++){
         // Check for Serial commands
         checkForUpdates();
@@ -136,7 +139,7 @@ void loop() {
 
 
         // Send the string to the Python listener
-        Serial.println(dataToSend);
+        // Serial.println(dataToSend);
       }    
     } else {
       stepperY.stop();
@@ -151,53 +154,77 @@ void loop() {
   delay (50);
 }
 
+// void checkHome() {
+//   Serial.println("Homing...");
+
+//   stepperZ.setMaxSpeed(300);   // set speed
+//   stepperZ.setAcceleration(100);  // Smoother movement
+//   stepperZ.setSpeed(200);     // move toward home
+
+//   while (digitalRead(limitSwitchBot) == HIGH) {
+//     stepperZ.runSpeed();       // Constant speed movement
+//   }
+
+//   stepperZ.stop();  // Stop motion
+//   Serial.println("Home position reached");
+// }
+
 void checkHome() {
-  bool limitSwitchBotTriggered = digitalRead(limitSwitchBot) == LOW;
+  Serial.println("Homing...");
 
-  Serial.println()
+  stepperZ.setMaxSpeed(300);        // Try 300–400 max
+  stepperZ.setAcceleration(100);    // Required for smooth motion
+  stepperZ.setSpeed(-200);          // Set your homing speed
 
-  while (limitSwitchBotTriggered != true ) {
-    stepperZ.move(-1);
-    stepperZ.run();
+  unsigned long startTime = millis();
+  const unsigned long timeout = 10000; // 10 second max homing
+
+  while (digitalRead(limitSwitchBot) == HIGH) {
+    stepperZ.runSpeed();            // Must be called very frequently
+    delayMicroseconds(100);         // Let it breathe (CPU time)
+
+    if (millis() - startTime > timeout) {
+      Serial.println("Timeout: no limit switch trigger.");
+      break;
+    }
   }
+
+  stepperZ.stop();                  // Stop the stepper
+  Serial.println("Home position reached");
 }
 
 void checkDone() {
-  bool limitSwitchTopTriggered = digitalRead(limitSwitchTop) == LOW;
+  if (digitalRead(limitSwitchTop) == HIGH) { // Limit switch is triggered
+    Serial.println("Top limit reached. Stopping scan.");
 
-  if (limitSwitchTopTriggered == true) {
-    // Send 0-stop command to scanner, and go to home position
     running = false;
     stopFlag = true;
-    Serial.println("Scanning Stopped");
 
-    checkHome();       // Go home when done
-
+    checkHome(); // Return to home after hitting the top limit
   }
 }
 
 void checkForUpdates() {
-  if (Serial.available() > 0) {      // Check if there's serial input
-    char inputChar = Serial.read();  // Read the input character from the UI button
-    inputChar = char(inputChar);     // Ensure it's treated as a clean character
-    inputChar = inputChar & 0x7F;    // Strip any potential high-order bits or noise
-    Serial.println(inputChar);       // Print the input for debugging
+  if (Serial.available() > 0) {
+    char inputChar = Serial.read(); // Read the input
+    inputChar = inputChar & 0x7F;   // Remove noise from coms
 
+    Serial.print("Received: ");
     Serial.println(inputChar);
-    if (inputChar == '1') {          // Start scanning
-      if (!running){
+
+    if (inputChar == '1') {
+      if (!running) {
         running = true;
         stopFlag = false;
-      Serial.println("Scanning...");
+        Serial.println("Scanning...");
       }
-    } else if (inputChar == '0') {   // Stop scanning
+    } else if (inputChar == '0') {
       if (running) {
         running = false;
         stopFlag = true;
         Serial.println("Scanning Stopped");
+        checkHome();  // Return to home when manually stopped
       }
-    } else {                     // Stop Scanning with Done Limit switch
-      checkDone();
     }
   }
 }
