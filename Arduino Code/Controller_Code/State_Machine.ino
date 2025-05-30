@@ -35,6 +35,7 @@ AccelStepper stepperZ(1, Z_STEP_PIN, Z_DIR_PIN);
 // ===== Scan State Machine =====
 enum ScanState {
   IDLE,
+  HOMING,
   START_SCAN,
   MOVE_Z,
   MOVE_Y,
@@ -45,6 +46,7 @@ ScanState scanState = IDLE;
 
 // ===== Motion & Scan Variables =====
 // Status flags
+bool homingComplete = false;
 bool running = false;
 bool stopFlag = true;
 
@@ -63,6 +65,8 @@ const int zStepsTotal = 200;
 bool stepIssuedY = false;
 bool stepIssuedZ = false;
 
+
+// Setup loop to define parameters
 void setup() {
   Serial.begin(115200);
   Wire.begin();
@@ -79,14 +83,80 @@ void setup() {
   Serial.println("Ready!");
 }
 
-void loop() {
-  checkForUpdates();
-  checkDone();
 
+// Run-Time loop to hold state machine
+void loop() {
+  // Event Listener for UI
+  if (Serial.available() > 0) {
+    char inputChar = Serial.read() & 0x7F;
+    Serial.print("Received: ");
+    Serial.println(inputChar);
+
+    if (inputChar == '1') {
+      if (!running) {
+        scanState = HOMING;
+      }
+    } else if (inputChar == '0') {
+      if (running) {
+        scanState = DONE;
+      }
+    }
+  }
+
+  // State Machine Case Structure
   switch (scanState) {
+    // Spin goto spin...to wait for instructions
     case IDLE:
       break;
 
+    // Homes the Z axis to the 0 point to start
+    case HOMING:
+      // Set flags to run
+      homingComplete = true;
+      running = true;
+      stopFlag = false;
+
+      Serial.println("Homing Z Axis...");
+
+      // Ensure driver is enabled
+      digitalWrite(ENABLE_PIN, LOW);
+
+      // Direction toward home (adjust sign if needed)
+      stepperZ.setMaxSpeed(300);
+      stepperZ.setAcceleration(100);
+      stepperZ.setSpeed(-200);  // Try +200 if direction is wrong
+
+      unsigned long startTime = millis();
+      const unsigned long timeout = 10000; // 10 sec timeout
+
+      while (digitalRead(limitSwitchBot) == HIGH) {
+        stepperZ.runSpeed();  // runSpeed ignores acceleration
+        if (millis() - startTime > timeout) {
+          Serial.println("Homing timeout: switch not triggered.");
+          // Set flags to stopped
+          homingComplete = false;
+          running = false;
+          stopFlag = true;
+          break;
+        }
+      }
+
+      stepperZ.stop();  // ensures it's not moving
+      stepperZ.setCurrentPosition(0);  // reset position to 0
+      Serial.println("Z axis homed.");
+
+
+      // Check status flags to choose next state
+      if (!homingComplete) {
+        scanState = HOMING;
+      } else if (!stopFlag && homingComplete) {
+        scanState = START_SCAN; 
+      } else {
+        scanState = IDLE;
+      }
+      break;
+
+    // Starts the over all scan by moving y and then z
     case START_SCAN:
       yStepCount = 0;
       zStepCount = 0;
@@ -111,6 +181,7 @@ void loop() {
       }
       break;
 
+    // Moves Y motor for platform
     case MOVE_Y:
       if (!stepIssuedY && yStepCount < yStepsPerZ) {
         stepperY.move(1);
@@ -129,7 +200,11 @@ void loop() {
         dataArray[0] = x_dist;
         dataArray[1] = y_axis_total_distance;
         dataArray[2] = z_axis_total_distance;
+
+        // Build serial packet
         String dataToSend = String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]);
+
+        // Send serial packet
         Serial.println(dataToSend);
       }
       if (yStepCount >= yStepsPerZ) {
@@ -137,98 +212,19 @@ void loop() {
       }
       break;
 
+    // Complete state...one way or another...
     case DONE:
+      if (digitalRead(limitSwitchTop) == LOW) {
+        Serial.println("Top limit reached. Stopping scan.");
+      } else {
+        Serial.println("Scanning Stopped.");
+      }
+      homingComplete = false;
       running = false;
       stopFlag = true;
-      Serial.println("Scan complete.");
-      checkHome();
       scanState = IDLE;
       break;
   }
+  // Drags it's feet to catch up
   delay(1);
-}
-
-void checkForUpdates() {
-  if (Serial.available() > 0) {
-    char inputChar = Serial.read() & 0x7F;
-    Serial.print("Received: ");
-    Serial.println(inputChar);
-
-    if (inputChar == '1') {
-      if (!running) {
-        running = true;
-        stopFlag = false;
-        scanState = START_SCAN;
-        Serial.println("Scanning...");
-      }
-    } else if (inputChar == '0') {
-      if (running) {
-        running = false;
-        stopFlag = true;
-        scanState = IDLE;
-        Serial.println("Scanning Stopped");
-        checkHome();
-      }
-    }
-  }
-}
-
-void checkDone() {
-  if (digitalRead(limitSwitchTop) == LOW) {
-    Serial.println("Top limit reached. Stopping scan.");
-    running = false;
-    stopFlag = true;
-    scanState = IDLE;
-    checkHome();
-  }
-}
-
-// void checkHome() {
-//   Serial.println("Homing Z Axis...");
-
-//   // Ensure driver is enabled
-//   digitalWrite(ENABLE_PIN, LOW);
-
-//   // Direction toward home (adjust sign if needed)
-//   stepperZ.setMaxSpeed(300);
-//   stepperZ.setAcceleration(100);
-//   stepperZ.setSpeed(-200);  // Try +200 if direction is wrong
-
-//   unsigned long startTime = millis();
-//   const unsigned long timeout = 10000; // 10 sec timeout
-
-//   while (digitalRead(limitSwitchBot) == HIGH) {
-//     stepperZ.runSpeed();  // runSpeed ignores acceleration
-//     if (millis() - startTime > timeout) {
-//       Serial.println("Homing timeout: switch not triggered.");
-//       break;
-//     }
-//   }
-
-//   stepperZ.stop();  // ensures it's not moving
-//   stepperZ.setCurrentPosition(0);  // reset position to 0
-//   Serial.println("Z axis homed.");
-// }
-
-bool homeZAxis() {
-  static bool started = false;
-
-  if (!started) {
-    Serial.println("Starting homing...");
-    stepperZ.setMaxSpeed(300);
-    stepperZ.setAcceleration(100);
-    stepperZ.setSpeed(-200);
-    started = true;
-  }
-
-  if (digitalRead(limitSwitchBot) == HIGH) {
-    stepperZ.runSpeed();
-    return false; // still homing
-  } else {
-    stepperZ.stop();
-    stepperZ.setCurrentPosition(0);
-    Serial.println("Z homing complete.");
-    started = false; // reset for next call
-    return true;     // homing done
-  }
 }
