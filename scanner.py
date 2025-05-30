@@ -100,6 +100,8 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         
         # ============ UI Event Handler Call ============ #
+        # Update the status label
+        self.statusLabel.setText("Ready!")
         # Call the button handler function to connect the UI to methods
         self.button_handler()
         
