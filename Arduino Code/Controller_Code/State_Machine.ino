@@ -50,6 +50,10 @@ bool homingComplete = false;
 bool running = false;
 bool stopFlag = true;
 
+bool homingStarted = false;
+unsigned long homingStartTime = 0;
+const unsigned long homingTimeout = 10000;
+
 // 3 measured distances
 float x_dist = 0.0;
 float y_axis_total_distance = 0.0;
@@ -111,48 +115,33 @@ void loop() {
 
     // Homes the Z axis to the 0 point to start
     case HOMING:
-      // Set flags to run
-      homingComplete = true;
-      running = true;
-      stopFlag = false;
+      if (!homingStarted) {
+        Serial.println("Homing Z Axis...");
+        digitalWrite(ENABLE_PIN, LOW);
+        stepperZ.setMaxSpeed(300);
+        stepperZ.setAcceleration(100);
+        stepperZ.setSpeed(-200);  // Adjust direction if needed
+        homingStartTime = millis();
+        homingStarted = true;
+      }
 
-      Serial.println("Homing Z Axis...");
-
-      // Ensure driver is enabled
-      digitalWrite(ENABLE_PIN, LOW);
-
-      // Direction toward home (adjust sign if needed)
-      stepperZ.setMaxSpeed(300);
-      stepperZ.setAcceleration(100);
-      stepperZ.setSpeed(-200);  // Try +200 if direction is wrong
-
-      unsigned long startTime = millis();
-      const unsigned long timeout = 10000; // 10 sec timeout
-
-      while (digitalRead(limitSwitchBot) == HIGH) {
-        stepperZ.runSpeed();  // runSpeed ignores acceleration
-        if (millis() - startTime > timeout) {
+      if (digitalRead(limitSwitchBot) == HIGH) {
+        stepperZ.runSpeed();  // Must be called frequently!
+        if (millis() - homingStartTime > homingTimeout) {
           Serial.println("Homing timeout: switch not triggered.");
-          // Set flags to stopped
           homingComplete = false;
           running = false;
           stopFlag = true;
-          break;
+          homingStarted = false;
+          scanState = IDLE;
         }
-      }
-
-      stepperZ.stop();  // ensures it's not moving
-      stepperZ.setCurrentPosition(0);  // reset position to 0
-      Serial.println("Z axis homed.");
-
-
-      // Check status flags to choose next state
-      if (!homingComplete) {
-        scanState = HOMING;
-      } else if (!stopFlag && homingComplete) {
-        scanState = START_SCAN; 
       } else {
-        scanState = IDLE;
+        stepperZ.stop();  // stops movement smoothly
+        stepperZ.setCurrentPosition(0);
+        Serial.println("Z axis homed.");
+        homingComplete = true;
+        homingStarted = false;
+        scanState = START_SCAN;
       }
       break;
 
