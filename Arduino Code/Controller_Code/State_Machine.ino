@@ -127,7 +127,7 @@ void loop() {
 
       if (digitalRead(limitSwitchBot) == HIGH) {
         Serial.println("Made it to stepper run!");
-        stepperZ.run();  // Must be called frequently!
+        stepperZ.runSpeed();  // Must be called frequently!
         if (millis() - homingStartTime > homingTimeout) {
           Serial.println("Homing timeout: switch not triggered.");
           homingComplete = false;
