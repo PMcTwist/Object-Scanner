@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <TFLI2C.h>
-#include <AccelStepper.h>
+
 
 // ===== LiDAR Sensor =====
 TFLI2C tflI2C;
@@ -21,14 +21,13 @@ const float z_DistancePerStep = rodPitch / stepsPerRev;
 
 // ===== Stepper Pins & Setup =====
 #define ENABLE_PIN 8
+
 #define Y_STEP_PIN 3
 #define Y_DIR_PIN 6
+
 #define Z_STEP_PIN 4
 #define Z_DIR_PIN 7
-
-AccelStepper stepperY(1, Y_STEP_PIN, Y_DIR_PIN);
-AccelStepper stepperZ(1, Z_STEP_PIN, Z_DIR_PIN);
-
+ 
 #define limitSwitchTop 11
 #define limitSwitchBot 10
 
@@ -49,8 +48,8 @@ ScanState scanState = IDLE;
 bool homingComplete = false;
 bool running = false;
 bool stopFlag = true;
-
 bool homingStarted = false;
+
 unsigned long homingStartTime = 0;
 const unsigned long homingTimeout = 10000;
 
@@ -64,70 +63,107 @@ int dataArray[3];
 
 int yStepCount = 0;
 int zStepCount = 0;
+
 const int yStepsPerZ = 200;
 const int zStepsTotal = 200;
-bool stepIssuedY = false;
-bool stepIssuedZ = false;
-
-
+ 
+// Step timing variables
+unsigned long lastHomingStepTime = 0;
+const unsigned long homingStepInterval = 10000; // 10ms between homing steps (much slower)
+ 
+// Custom stepper functions (much slower timing)
+void stepY(int direction) {
+  digitalWrite(Y_DIR_PIN, direction > 0 ? HIGH : LOW);
+  delay(50); // Let direction settle
+  digitalWrite(Y_STEP_PIN, HIGH);
+  delay(50);
+  digitalWrite(Y_STEP_PIN, LOW);
+  delay(100); // Pause between steps
+}
+ 
+void stepZ(int direction) {
+  digitalWrite(Z_DIR_PIN, direction > 0 ? HIGH : LOW);
+  delay(50); // Let direction settle  
+  digitalWrite(Z_STEP_PIN, HIGH);
+  delay(50);
+  digitalWrite(Z_STEP_PIN, LOW);
+  delay(100); // Pause between steps
+}
+ 
+void stepZHoming() {
+  // Non-blocking homing step
+  if (micros() - lastHomingStepTime >= homingStepInterval) {
+    digitalWrite(Z_DIR_PIN, LOW); // Move down for homing
+    digitalWrite(Z_STEP_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(Z_STEP_PIN, LOW);
+    lastHomingStepTime = micros();
+  }
+}
+ 
 // Setup loop to define parameters
 void setup() {
   Serial.begin(115200);
   Wire.begin();
-
+  
   pinMode(ENABLE_PIN, OUTPUT);
-  digitalWrite(ENABLE_PIN, LOW);
-
+  digitalWrite(ENABLE_PIN, LOW); // Enable steppers
+  
+  pinMode(Y_STEP_PIN, OUTPUT);
+  pinMode(Y_DIR_PIN, OUTPUT);
+  
+  pinMode(Z_STEP_PIN, OUTPUT);
+  pinMode(Z_DIR_PIN, OUTPUT);
+ 
   pinMode(limitSwitchBot, INPUT_PULLUP);
   pinMode(limitSwitchTop, INPUT_PULLUP);
-
-  stepperY.setMaxSpeed(200);
-  stepperZ.setMaxSpeed(200);
-
+  
   Serial.println("Ready!");
 }
 
-
-// Run-Time loop to hold state machine
+// ===== Main Loop =====
+// This loop runs the state machine for the scanning process
 void loop() {
   // Event Listener for UI
   if (Serial.available() > 0) {
     char inputChar = Serial.read() & 0x7F;
     Serial.print("Received: ");
     Serial.println(inputChar);
-
+   
     if (inputChar == '1') {
       if (!running) {
+        Serial.println("Starting scan sequence...");
         scanState = HOMING;
+        running = true;
+        stopFlag = false;
       }
     } else if (inputChar == '0') {
       if (running) {
+        Serial.println("Stop command received");
         scanState = DONE;
       }
     }
   }
-
+  
   // State Machine Case Structure
   switch (scanState) {
-    // Spin goto spin...to wait for instructions
+    // Wait for instructions
     case IDLE:
       break;
-
+    
     // Homes the Z axis to the 0 point to start
     case HOMING:
       if (!homingStarted) {
         Serial.println("Homing Z Axis...");
-        digitalWrite(ENABLE_PIN, LOW);
-        stepperZ.setMaxSpeed(300);
-        stepperZ.setAcceleration(100);
-        stepperZ.setSpeed(-200);  // Adjust direction if needed
         homingStartTime = millis();
         homingStarted = true;
+        lastHomingStepTime = 0;
       }
-
+      // Check if limit switch is still open (not triggered)
       if (digitalRead(limitSwitchBot) == HIGH) {
-        Serial.println("Made it to stepper run!");
-        stepperZ.runSpeed();  // Must be called frequently!
+        // Take homing steps
+        stepZHoming();
+        // Check for timeout
         if (millis() - homingStartTime > homingTimeout) {
           Serial.println("Homing timeout: switch not triggered.");
           homingComplete = false;
@@ -137,77 +173,76 @@ void loop() {
           scanState = IDLE;
         }
       } else {
-        stepperZ.stop();  // stops movement smoothly
-        stepperZ.setCurrentPosition(0);
-        Serial.println("Z axis homed.");
+        // Limit switch triggered - homing complete
+        Serial.println("Z axis homed successfully.");
         homingComplete = true;
         homingStarted = false;
         scanState = START_SCAN;
       }
       break;
-
-    // Starts the over all scan by moving y and then z
+    
+    // Initialize scan parameters
     case START_SCAN:
+      Serial.println("Initializing scan...");
       yStepCount = 0;
       zStepCount = 0;
       y_axis_total_distance = 0;
       z_axis_total_distance = 0;
-      stepperY.setCurrentPosition(0);
-      stepperZ.setCurrentPosition(0);
       scanState = MOVE_Z;
       break;
-
+    
+    // Move Z axis up one step
     case MOVE_Z:
-      if (!stepIssuedZ) {
-        stepperZ.move(1);
-        z_axis_total_distance += z_DistancePerStep;
-        stepIssuedZ = true;
-      }
-      stepperZ.run();
-      if (stepperZ.distanceToGo() == 0 && stepIssuedZ) {
-        stepIssuedZ = false;
-        yStepCount = 0;
-        scanState = MOVE_Y;
-      }
+      Serial.print("Moving Z axis up - step ");
+      Serial.println(zStepCount + 1);
+      stepZ(1); // Move up one step
+      z_axis_total_distance += z_DistancePerStep;
+      zStepCount++;
+      // Reset Y parameters for this Z level
+      yStepCount = 0;
+      scanState = MOVE_Y;
       break;
-
-    // Moves Y motor for platform
+    
+    // Move Y motor for platform rotation and take measurements
     case MOVE_Y:
-      if (!stepIssuedY && yStepCount < yStepsPerZ) {
-        stepperY.move(1);
+      if (yStepCount < yStepsPerZ) {
+        // Take a Y step
+        stepY(1);
         y_axis_total_distance += y_DistancePerStep;
-        stepIssuedY = true;
-      }
-      stepperY.run();
-      if (stepperY.distanceToGo() == 0 && stepIssuedY) {
-        stepIssuedY = false;
         yStepCount++;
-
+        // Take LiDAR measurement
         if (tflI2C.getData(tfDist, tfAddr)) {
-          x_dist = tfDist * 10;
+          x_dist = tfDist * 10; // Convert to mm
+        } else {
+          x_dist = 0; // Default if measurement fails
         }
-
-        dataArray[0] = x_dist;
-        dataArray[1] = y_axis_total_distance;
-        dataArray[2] = z_axis_total_distance;
-
-        // Build serial packet
+        // Prepare data
+        dataArray[0] = (int)x_dist;
+        dataArray[1] = (int)y_axis_total_distance;
+        dataArray[2] = (int)z_axis_total_distance;
+        // Send data
         String dataToSend = String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]);
-
-        // Send serial packet
         Serial.println(dataToSend);
-      }
-      if (yStepCount >= yStepsPerZ) {
-        scanState = ++zStepCount >= zStepsTotal ? DONE : MOVE_Z;
+        // Small delay between measurements
+        delay(200); // Longer delay between Y steps
+      } else {
+        // Completed all Y steps for this Z level
+        if (zStepCount >= zStepsTotal) {
+          // Completed entire scan
+          scanState = DONE;
+        } else {
+          // Move to next Z level
+          scanState = MOVE_Z;
+        }
       }
       break;
-
-    // Complete state...one way or another...
+    
+    // Complete state
     case DONE:
       if (digitalRead(limitSwitchTop) == LOW) {
         Serial.println("Top limit reached. Stopping scan.");
       } else {
-        Serial.println("Scanning Stopped.");
+        Serial.println("Scan completed successfully.");
       }
       homingComplete = false;
       running = false;
@@ -215,6 +250,6 @@ void loop() {
       scanState = IDLE;
       break;
   }
-  // Drags it's feet to catch up
+  // Small delay to prevent overwhelming the system
   delay(1);
 }
