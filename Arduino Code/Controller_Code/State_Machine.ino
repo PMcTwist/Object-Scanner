@@ -51,7 +51,7 @@ bool stopFlag = true;
 bool homingStarted = false;
 
 unsigned long homingStartTime = 0;
-const unsigned long homingTimeout = 10000;
+const unsigned long homingTimeout = 1000000000;
 
 // 3 measured distances
 float x_dist = 0.0;
