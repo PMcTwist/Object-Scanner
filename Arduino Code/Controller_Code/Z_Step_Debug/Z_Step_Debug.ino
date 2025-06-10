@@ -26,14 +26,14 @@
 // TEST 2
 
 // #include <Arduino.h>
- 
+
 // // ===== Stepper Pins =====
 // #define ENABLE_PIN 8
 // #define Y_STEP_PIN 3
 // #define Y_DIR_PIN 6
 // #define Z_STEP_PIN 4
 // #define Z_DIR_PIN 7
- 
+
 // void setup() {
 //   Serial.begin(115200);
 //   // Set up pins
@@ -48,7 +48,7 @@
 //   Serial.println("Testing Y motor first, then Z motor");
 //   delay(2000); // Wait for driver to initialize
 // }
- 
+
 // void loop() {
 //   Serial.println("Testing Y Motor - 10 steps clockwise");
 //   // Set direction
@@ -125,7 +125,7 @@ void setup() {
 
   // Stepper driver setup
   pinMode(ENABLE_PIN, OUTPUT);
-  digitalWrite(ENABLE_PIN, LOW); // Enable stepper driver (Active LOW)
+  digitalWrite(ENABLE_PIN, LOW);  // Enable stepper driver (Active LOW)
 
   pinMode(Z_STEP_PIN, OUTPUT);
   pinMode(Z_DIR_PIN, OUTPUT);
@@ -137,9 +137,9 @@ void setup() {
 void loop() {
   // Single step pulse
   digitalWrite(Z_STEP_PIN, HIGH);
-  delay(10); // 10ms HIGH pulse
+  delay(1000);  // 10ms HIGH pulse
   digitalWrite(Z_STEP_PIN, LOW);
-  delay(1000); // 1 second delay between steps (slow visible stepping)
+  delay(1000);  // 1 second delay between steps (slow visible stepping)
 
   Serial.println("Step Z");
 }
