@@ -216,7 +216,7 @@ void loop() {
         dataArray[2] = (int)z_axis_total_distance;
 
         // Send data
-        String dataToSend = String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]);
+        String dataToSend = String("DATA(") + String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]) + String(")");
         Serial.println(dataToSend);
 
         // Small delay between measurements
