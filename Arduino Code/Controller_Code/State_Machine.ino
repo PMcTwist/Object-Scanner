@@ -8,16 +8,20 @@ TFLI2C tflI2C;
 int16_t tfDist;
 int16_t tfAddr = TFL_DEF_ADR;
 
+// ==== Micro-Step Jumper =====
+const int micro_jumper = 4; // 4 is for 1/4 microsteps
+
 // ===== Platform Geometry =====
 const float y_StepAngle = 1.8;
 const float platformRadius = 100; // mm
-const float stepsPerRev = 360 / y_StepAngle;
+const float stepsPerRev = (360 / y_StepAngle) * micro_jumper; 
 const float platformCircumference = 2.0 * 3.1415926535 * platformRadius;
 const float y_DistancePerStep = platformCircumference / stepsPerRev;
 
 // ===== Threaded Rod Geometry =====
 const float rodPitch = 2; // mm
-const float z_DistancePerStep = rodPitch / stepsPerRev;
+const float z_stepsPerRev = 200 * micro_jumper; // 200 steps/rev for NEMA 17
+const float z_DistancePerStep = rodPitch / z_stepsPerRev;
 
 // ===== Stepper Pins & Setup =====
 #define ENABLE_PIN 8
@@ -64,30 +68,30 @@ int dataArray[3];
 int yStepCount = 0;
 int zStepCount = 0;
 
-const int yStepsPerZ = 200;
-const int zStepsTotal = 200;
+const int yStepsPerZ = 200 * micro_jumper;
+const int zStepsTotal = 200 * micro_jumper;
  
 // Step timing variables
 unsigned long lastHomingStepTime = 0;
-const unsigned long homingStepInterval = 10000; // 10ms between homing steps (much slower)
+const unsigned long homingStepInterval = 1000; // 10ms between homing steps (much slower)
  
 // Custom stepper functions (much slower timing)
 void stepY(int direction) {
   digitalWrite(Y_DIR_PIN, direction > 0 ? HIGH : LOW);
-  delay(50); // Let direction settle
+  delayMicroseconds(10); // Let direction settle
   digitalWrite(Y_STEP_PIN, HIGH);
-  delay(50);
+  delayMicroseconds(5);
   digitalWrite(Y_STEP_PIN, LOW);
-  delay(100); // Pause between steps
+  delayMicroseconds(1000); // Pause between steps
 }
  
 void stepZ(int direction) {
   digitalWrite(Z_DIR_PIN, direction > 0 ? HIGH : LOW);
-  delay(50); // Let direction settle  
+  delayMicroseconds(10); // Let direction settle  
   digitalWrite(Z_STEP_PIN, HIGH);
-  delay(50);
+  delayMicroseconds(5);
   digitalWrite(Z_STEP_PIN, LOW);
-  delay(100); // Pause between steps
+  delayMicroseconds(1000); // Pause between steps
 }
  
 void stepZHoming() {
@@ -132,14 +136,14 @@ void loop() {
    
     if (inputChar == '1') {
       if (!running) {
-        Serial.println("Starting scan sequence...");
+        Serial.println("Starting Scan");
         scanState = HOMING;
         running = true;
         stopFlag = false;
       }
     } else if (inputChar == '0') {
       if (running) {
-        Serial.println("Stop command received");
+        Serial.println("Stopping Scan");
         scanState = DONE;
       }
     }
@@ -188,21 +192,9 @@ void loop() {
       zStepCount = 0;
       y_axis_total_distance = 0;
       z_axis_total_distance = 0;
-      scanState = MOVE_Z;
-      break;
-    
-    // Move Z axis up one step
-    case MOVE_Z:
-      Serial.print("Moving Z axis up - step ");
-      Serial.println(zStepCount + 1);
-      stepZ(1); // Move up one step
-      z_axis_total_distance += z_DistancePerStep;
-      zStepCount++;
-      // Reset Y parameters for this Z level
-      yStepCount = 0;
       scanState = MOVE_Y;
       break;
-    
+
     // Move Y motor for platform rotation and take measurements
     case MOVE_Y:
       if (yStepCount < yStepsPerZ) {
@@ -210,19 +202,23 @@ void loop() {
         stepY(1);
         y_axis_total_distance += y_DistancePerStep;
         yStepCount++;
+
         // Take LiDAR measurement
         if (tflI2C.getData(tfDist, tfAddr)) {
           x_dist = tfDist * 10; // Convert to mm
         } else {
           x_dist = 0; // Default if measurement fails
         }
+
         // Prepare data
         dataArray[0] = (int)x_dist;
         dataArray[1] = (int)y_axis_total_distance;
         dataArray[2] = (int)z_axis_total_distance;
+
         // Send data
         String dataToSend = String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]);
         Serial.println(dataToSend);
+
         // Small delay between measurements
         delay(200); // Longer delay between Y steps
       } else {
@@ -235,6 +231,25 @@ void loop() {
           scanState = MOVE_Z;
         }
       }
+      break;
+    
+    // Move Z axis up one step
+    case MOVE_Z:
+      Serial.print("Moving Z axis up - step ");
+      Serial.println(zStepCount + 1);
+
+      for (int i = 0; i < z_stepsPerRev; i++) {
+        stepZ(1); // Move Z one microstep
+      }
+
+      // Z moved 1 full rotation (2mm)
+      z_axis_total_distance += rodPitch; // 2mm per full thread revolution
+      zStepCount++;
+
+      // Reset Y parameters for this Z level
+      yStepCount = 0;
+      y_axis_total_distance = 0.0;
+      scanState = MOVE_Y;
       break;
     
     // Complete state
