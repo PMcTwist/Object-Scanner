@@ -63,7 +63,7 @@ float y_axis_total_distance = 0.0;
 float z_axis_total_distance = 0.0;
 
 // Array of send data
-int dataArray[3];
+float dataArray[3];
 
 int yStepCount = 0;
 int zStepCount = 0;
@@ -211,9 +211,9 @@ void loop() {
         }
 
         // Prepare data
-        dataArray[0] = (int)x_dist;
-        dataArray[1] = (int)y_axis_total_distance;
-        dataArray[2] = (int)z_axis_total_distance;
+        dataArray[0] = (float)x_dist;
+        dataArray[1] = (float)y_axis_total_distance;
+        dataArray[2] = (float)z_axis_total_distance;
 
         // Send data
         String dataToSend = String("DATA(") + String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]) + String(")");
