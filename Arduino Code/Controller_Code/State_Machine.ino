@@ -15,7 +15,7 @@ const int micro_jumper = 4; // 4 is for 1/4 microsteps
 const float y_StepAngle = 1.8;
 const float platformRadius = 100; // mm
 const float stepsPerRev = (360 / y_StepAngle) * micro_jumper; 
-const float platformCircumference = 2.0 * 3.1415926535 * platformRadius;
+const float platformCircumference = 2.0 * 3.1415926535;
 const float y_DistancePerStep = platformCircumference / stepsPerRev;
 
 // ===== Threaded Rod Geometry =====
@@ -68,7 +68,7 @@ float dataArray[3];
 int yStepCount = 0;
 int zStepCount = 0;
 
-const int yStepsPerZ = 200 * micro_jumper;
+const int yStepsPerZ = stepsPerRev; // Need to fix this part for full rotation!!
 const int zStepsTotal = 200 * micro_jumper;
  
 // Step timing variables
@@ -111,7 +111,7 @@ void setup() {
   Wire.begin();
   
   pinMode(ENABLE_PIN, OUTPUT);
-  digitalWrite(ENABLE_PIN, LOW); // Enable steppers
+  digitalWrite(ENABLE_PIN, HIGH); // Enable steppers
   
   pinMode(Y_STEP_PIN, OUTPUT);
   pinMode(Y_DIR_PIN, OUTPUT);
@@ -157,6 +157,7 @@ void loop() {
     
     // Homes the Z axis to the 0 point to start
     case HOMING:
+      digitalWrite(ENABLE_PIN, LOW); // Enable steppers for homing
       if (!homingStarted) {
         Serial.println("Homing Z Axis...");
         homingStartTime = millis();
@@ -210,10 +211,18 @@ void loop() {
           x_dist = 0; // Default if measurement fails
         }
 
+        // Calculate current angle in radians
+        float current_angle_rad = (float)yStepCount * (2.0 * 3.1415926535 / stepsPerRev);
+
+        // Calculate Cartesian coordinates
+        float x = sin(current_angle_rad) * x_dist;
+        float y = cos(current_angle_rad) * x_dist;
+        float z = z_axis_total_distance;
+
         // Prepare data
-        dataArray[0] = (float)x_dist;
-        dataArray[1] = (float)y_axis_total_distance;
-        dataArray[2] = (float)z_axis_total_distance;
+        dataArray[0] = x;
+        dataArray[1] = y;
+        dataArray[2] = z;
 
         // Send data
         String dataToSend = String("DATA(") + String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]) + String(")");
@@ -263,6 +272,7 @@ void loop() {
       running = false;
       stopFlag = true;
       scanState = IDLE;
+      digitalWrite(ENABLE_PIN, HIGH); // disable steppers
       break;
   }
   // Small delay to prevent overwhelming the system
