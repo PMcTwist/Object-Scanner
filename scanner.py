@@ -93,10 +93,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Create the graph thread and grapher instance
         self.graph_thread = QThread()
-        self.grapher = DataGrapher(self.data_queue, self.progressBar)
+        self.grapher = DataGrapher(self.data_queue)
 
         # Send obejcts to the grapher thread
         self.grapher.set_canvas(self.canvas, self.ax) 
+        self.grapher.newData.connect(self.grapher.updateModel)
 
         
         # ============ UI Event Handler Call ============ #
@@ -127,9 +128,6 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Update the status label
         self.statusLabel.setText("Scanning...")
 
-        # Clear the progress bar
-        self.progressBar.setValue(0)
-
         # Connect to the instance and wait for data
         self.data_thread.started.connect(self.worker.run)
         self.worker.error_text.connect(self.error_handler)
@@ -137,7 +135,6 @@ class MainWindow(QMainWindow, FORM_CLASS):
         
         # Connect the grapher thread to the worker thread
         self.graph_thread.started.connect(self.grapher.run)
-        self.grapher.updateProgressSignal.connect(self.updateProgress)
 
         # Move instances to threads
         self.worker.moveToThread(self.data_thread)
@@ -150,14 +147,6 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         self.pushButtonStop.setEnabled(True)
         self.pushButtonStart.setEnabled(False)
-
-    def updateProgress(self, progress):
-        """
-        Function to update the progress bar
-        Input: Progress value
-        Output: Updated progress bar value
-        """
-        self.progressBar.setValue(progress)
 
     def error_handler(self, error):
         """
