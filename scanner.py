@@ -226,17 +226,18 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
     def saveFile(self):
         """
-        Function to save the scanned data to a file
+        Function to save the scanned data to a text file
         Input: Button click
-        Output: Save the data to a file
+        Output: Save the data to a .txt file
         """
         # Get current timestamp
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-        # Open the file and write the save array
-        with open(self.path + f"\\Data\\{timestamp}-scanData.csv", "w") as file:
-            writer = csv.writer(file)
-            writer.writerows(self.saveData)
+        # Open the file and write the save array as text
+        with open(self.path + f"\\Data\\{timestamp}-scanData.txt", "w") as file:
+            for row in self.saveData:
+                line = ','.join(str(item) for item in row)
+                file.write(line + '\n')
 
     @staticmethod
     def serial_ports():
