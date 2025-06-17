@@ -212,9 +212,12 @@ void loop() {
           x_dist = 0; // Default if measurement fails
         }
 
+        // Calculate current angle in radians
+        float angle = (yStepCount * 2.0 * PI) / stepsPerRev;
+
         // Calculate Cartesian coordinates
-        float x = sin(y_DistancePerStep) * x_dist;
-        float y = cos(y_DistancePerStep) * x_dist;
+        float x = cos(angle) * x_dist;
+        float y = sin(angle) * x_dist;
         float z = z_axis_total_distance;
 
         // Prepare data
