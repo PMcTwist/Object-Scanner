@@ -12,10 +12,11 @@ int16_t tfAddr = TFL_DEF_ADR;
 const int micro_jumper = 4; // 4 is for 1/4 microsteps
 
 // ===== Platform Geometry =====
-const float y_StepAngle = 1.8;
+const float y_StepAngle = 1.8; // degrees per full step
+const int motor_steps_per_rev = 360 / y_StepAngle; // 200 for 1.8°
+const int stepsPerRev = motor_steps_per_rev * micro_jumper; // 200 * 4 = 800
 const float platformRadius = 100; // mm
-const float stepsPerRev = (360 / y_StepAngle) * micro_jumper; 
-const float platformCircumference = 2.0 * 3.1415926535;
+const float platformCircumference = 2.0 * 3.1415926535 * platformRadius;
 const float y_DistancePerStep = platformCircumference / stepsPerRev;
 
 // ===== Threaded Rod Geometry =====
@@ -211,12 +212,9 @@ void loop() {
           x_dist = 0; // Default if measurement fails
         }
 
-        // Calculate current angle in radians
-        float current_angle_rad = (float)yStepCount * (2.0 * 3.1415926535 / stepsPerRev);
-
         // Calculate Cartesian coordinates
-        float x = sin(current_angle_rad) * x_dist;
-        float y = cos(current_angle_rad) * x_dist;
+        float x = sin(y_DistancePerStep) * x_dist;
+        float y = cos(y_DistancePerStep) * x_dist;
         float z = z_axis_total_distance;
 
         // Prepare data
