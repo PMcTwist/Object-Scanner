@@ -53,17 +53,19 @@ class Worker(QObject):
 
         while self.running:
             try:
-                # Get the distance reading
                 serial_returned = self.open_port.readline().decode("utf-8").strip()
-
-                # Check if it's valid xyz data
-                xyz_tuple = self.is_valid_xyz_data(serial_returned)
-                if xyz_tuple:
-                    self.distance_reading.emit(xyz_tuple)
-                elif serial_returned:  # If not xyz data and not empty, treat as message
-                    self.message_received.emit(serial_returned)
-
+                
+                # Check for STAT() message
+                stat_match = re.match(r"STAT\((.*)\)", serial_returned)
+                if stat_match:
+                    self.message_received.emit(stat_match.group(1))
+                else:
+                    # Check for DATA(x,y,z) format
+                    xyz_tuple = self.is_valid_xyz_data(serial_returned)
+                    if xyz_tuple:
+                        self.distance_reading.emit(xyz_tuple)
             except serial.SerialException as e:
+                # Handle serial port errors
                 self.error_text.emit(str(e))
                 self.unplugged = 1
 
@@ -71,7 +73,7 @@ class Worker(QObject):
         """
         Function to stop the worker thread
         Input: Stop signal from main window
-        Output: Set running flag to flase
+        Output: Set running flag to false
         """
         self.open_port.write(bytes('0', 'utf-8'))
         
