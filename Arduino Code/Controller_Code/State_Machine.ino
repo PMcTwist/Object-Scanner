@@ -137,14 +137,14 @@ void loop() {
    
     if (inputChar == '1') {
       if (!running) {
-        Serial.println("Starting Scan");
+        Serial.println("STAT(Starting Scan)");
         scanState = HOMING;
         running = true;
         stopFlag = false;
       }
     } else if (inputChar == '0') {
       if (running) {
-        Serial.println("Stopping Scan");
+        Serial.println("STAT(Stopping Scan)");
         scanState = DONE;
       }
     }
@@ -160,7 +160,7 @@ void loop() {
     case HOMING:
       digitalWrite(ENABLE_PIN, LOW); // Enable steppers for homing
       if (!homingStarted) {
-        Serial.println("Homing Z Axis...");
+        Serial.println("STAT(Homing Z Axis...)");
         homingStartTime = millis();
         homingStarted = true;
         lastHomingStepTime = 0;
@@ -171,7 +171,7 @@ void loop() {
         stepZHoming();
         // Check for timeout
         if (millis() - homingStartTime > homingTimeout) {
-          Serial.println("Homing timeout: switch not triggered.");
+          Serial.println("STAT(Homing timeout: switch not triggered.)");
           homingComplete = false;
           running = false;
           stopFlag = true;
@@ -180,7 +180,7 @@ void loop() {
         }
       } else {
         // Limit switch triggered - homing complete
-        Serial.println("Z axis homed successfully.");
+        Serial.println("STAT(Z axis homed successfully.)");
         homingComplete = true;
         homingStarted = false;
         scanState = START_SCAN;
@@ -189,7 +189,7 @@ void loop() {
     
     // Initialize scan parameters
     case START_SCAN:
-      Serial.println("Initializing scan...");
+      Serial.println("STAT(Initializing scan...)");
       yStepCount = 0;
       zStepCount = 0;
       y_axis_total_distance = 0;
@@ -212,36 +212,37 @@ void loop() {
           x_dist = 0; // Default if measurement fails
         }
 
-        if (x_dist > platformRadius) {
-          return; // Skip if distance exceeds platform radius
-        }
-
         if (x_dist < 0) {
           x_dist = 0; // Ensure non-negative distance
         }
 
-        // Calculate current angle in radians
-        float angle = (yStepCount * 2.0 * PI) / stepsPerRev;
+        if (x_dist <= platformRadius) {
+          // Scanned point is within the platform radius
+          foundValidPoint = true;
 
-        // Calculate Cartesian coordinates
-        float x = cos(angle) * x_dist;
-        float y = sin(angle) * x_dist;
-        float z = z_axis_total_distance;
+          // Calculate current angle in radians
+          float angle = (yStepCount * 2.0 * PI) / stepsPerRev;
 
-        // Prepare data
-        dataArray[0] = x;
-        dataArray[1] = y;
-        dataArray[2] = z;
+          // Calculate Cartesian coordinates
+          float x = cos(angle) * x_dist;
+          float y = sin(angle) * x_dist;
+          float z = z_axis_total_distance;
 
-        // Send data
-        String dataToSend = String("DATA(") + String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]) + String(")");
-        Serial.println(dataToSend);
+          // Prepare data
+          dataArray[0] = x;
+          dataArray[1] = y;
+          dataArray[2] = z;
 
+          // Send data
+          String dataToSend = String("DATA(") + String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]) + String(")");
+          Serial.println(dataToSend);
+        }
+        
         // Small delay between measurements
         delay(200); // Longer delay between Y steps
       } else {
         // Completed all Y steps for this Z level
-        if (zStepCount >= zStepsTotal) {
+        if (!foundValidPoint) {
           // Completed entire scan
           scanState = DONE;
         } else {
@@ -253,14 +254,14 @@ void loop() {
     
     // Move Z axis up one step
     case MOVE_Z:
-      Serial.print("Moving Z axis up - step ");
+      Serial.println("STAT(Moving Z axis up - step )");
       Serial.println(zStepCount + 1);
 
       for (int i = 0; i < z_stepsPerRev / 2; i++) {
         stepZ(1); // Move Z one microstep
       }
 
-      // Z moved 1 full rotation (2mm)
+      // Z moved 1 full rotation (1mm)
       z_axis_total_distance += rodPitch / 2; // 1mm per full thread revolution
       zStepCount++;
 
@@ -273,9 +274,9 @@ void loop() {
     // Complete state
     case DONE:
       if (digitalRead(limitSwitchTop) == LOW) {
-        Serial.println("Top limit reached. Stopping scan.");
+        Serial.println("STAT(Top limit reached. Stopping scan.)");
       } else {
-        Serial.println("Scan completed successfully.");
+        Serial.println("STAT(Scan completed successfully.)");
       }
       homingComplete = false;
       running = false;
