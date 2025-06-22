@@ -54,6 +54,7 @@ bool homingComplete = false;
 bool running = false;
 bool stopFlag = true;
 bool homingStarted = false;
+bool foundValidPoint = false;
 
 unsigned long homingStartTime = 0;
 const unsigned long homingTimeout = 1000000000;
@@ -201,6 +202,9 @@ void loop() {
     case MOVE_Y:
       if (yStepCount < yStepsPerZ) {
         Serial.println("STAT(Scanning...)");
+
+        // reset point flag
+        foundValidPoint = false;
 
         // Take a Y step
         stepY(1);
