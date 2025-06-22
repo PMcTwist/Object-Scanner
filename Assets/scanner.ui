@@ -396,6 +396,36 @@ QComboBox::down-arrow {
          </spacer>
         </item>
         <item>
+         <widget class="QLabel" name="serialTitleLabel">
+          <property name="styleSheet">
+           <string notr="true">font: 75 15pt &quot;MS Shell Dlg 2&quot;;</string>
+          </property>
+          <property name="text">
+           <string>Serial Port Status:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="serialLabel">
+          <property name="styleSheet">
+           <string notr="true">font: 75 15pt &quot;MS Shell Dlg 2&quot;;</string>
+          </property>
+          <property name="text">
+           <string>Serial Port Status Here</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="spacerLabel">
+          <property name="styleSheet">
+           <string notr="true">font: 75 15pt &quot;MS Shell Dlg 2&quot;;</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QLabel" name="statusTitleLabel">
           <property name="styleSheet">
            <string notr="true">font: 75 15pt &quot;MS Shell Dlg 2&quot;;</string>
