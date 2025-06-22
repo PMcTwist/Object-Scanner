@@ -189,7 +189,7 @@ void loop() {
     
     // Initialize scan parameters
     case START_SCAN:
-      Serial.println("STAT(Initializing scan...)");
+      Serial.println("STAT(Scanning...)");
       yStepCount = 0;
       zStepCount = 0;
       y_axis_total_distance = 0;
@@ -200,6 +200,8 @@ void loop() {
     // Move Y motor for platform rotation and take measurements
     case MOVE_Y:
       if (yStepCount < yStepsPerZ) {
+        Serial.println("STAT(Scanning...)");
+
         // Take a Y step
         stepY(1);
         y_axis_total_distance += y_DistancePerStep;
