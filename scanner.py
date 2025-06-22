@@ -101,8 +101,9 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         
         # ============ UI Event Handler Call ============ #
-        # Update the status label
+        # Update the status labels
         self.statusLabel.setText("Ready!")
+        self.serialLabel.setText(" ")
         # Call the button handler function to connect the UI to methods
         self.button_handler()
         
@@ -174,12 +175,12 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.statusLabel.setText("Scanning Stopped")
 
         # Stop the worker thread
-        self.worker.stop()               
+        self.worker.running = False      # Stop the worker thread              
         self.data_thread.quit()          # Tell the thread to exit its event loop
         self.data_thread.wait()          # Wait for the thread to actually exit
 
         # Stop the grapher thread
-        self.grapher.stop()               
+        self.grapher.stopRequested.emit() # Stop the grapher               
         self.graph_thread.quit()          # Tell the thread to exit its event loop
         self.graph_thread.wait()          # Wait for the thread to actually exit
 
@@ -188,7 +189,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
     def updatePort(self):
         """
-        Fucntion to update the port information
+        Function to update the port information
         Input: Combobox selection
         Output: Updated port information to class variable
         """
