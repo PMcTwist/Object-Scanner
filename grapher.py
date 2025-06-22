@@ -5,6 +5,7 @@ import math
 class DataGrapher(QObject):
     newData = pyqtSignal(list)  # Signal to main thread for new data
     stopRequested = pyqtSignal() # Signal to stop the grapher
+    stopped = pyqtSignal()  # Signal to indicate the grapher has stopped
 
     def __init__(self, data_queue):
         super().__init__()
