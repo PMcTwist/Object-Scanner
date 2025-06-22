@@ -212,6 +212,14 @@ void loop() {
           x_dist = 0; // Default if measurement fails
         }
 
+        if (x_dist > platformRadius) {
+          return; // Skip if distance exceeds platform radius
+        }
+
+        if (x_dist < 0) {
+          x_dist = 0; // Ensure non-negative distance
+        }
+
         // Calculate current angle in radians
         float angle = (yStepCount * 2.0 * PI) / stepsPerRev;
 
@@ -248,12 +256,12 @@ void loop() {
       Serial.print("Moving Z axis up - step ");
       Serial.println(zStepCount + 1);
 
-      for (int i = 0; i < z_stepsPerRev; i++) {
+      for (int i = 0; i < z_stepsPerRev / 2; i++) {
         stepZ(1); // Move Z one microstep
       }
 
       // Z moved 1 full rotation (2mm)
-      z_axis_total_distance += rodPitch; // 2mm per full thread revolution
+      z_axis_total_distance += rodPitch / 2; // 1mm per full thread revolution
       zStepCount++;
 
       // Reset Y parameters for this Z level
