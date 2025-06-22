@@ -175,7 +175,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.statusLabel.setText("Scanning Stopped")
 
         # Stop the worker thread
-        self.worker.running = False      # Stop the worker thread              
+        self.worker.stopRequested.emit() # Stop the worker
         self.data_thread.quit()          # Tell the thread to exit its event loop
         self.data_thread.wait()          # Wait for the thread to actually exit
 
