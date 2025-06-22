@@ -14,7 +14,9 @@ class DataGrapher(QObject):
         self.ax = None
         self.last_z = []
         self.total_graph_data = []
+
         self.stopRequested.connect(self.stop)
+        stopped = pyqtSignal()
 
     @pyqtSlot()
     def run(self):
@@ -50,6 +52,8 @@ class DataGrapher(QObject):
         self.running = False
         if hasattr(self, 'timer'):
             self.timer.stop()
+
+        self.stopped.emit()  # Emit stopped signal to main thread
 
     def set_canvas(self, canvas, ax):
         self.canvas = canvas
