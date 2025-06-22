@@ -121,6 +121,14 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Input: Button click
         Output: Serial command 1 to arduino
         """
+        # Clean up old threads
+        if hasattr(self, 'data_thread'):
+            self.data_thread.quit()
+            self.data_thread.wait()
+        if hasattr(self, 'graph_thread'):
+            self.graph_thread.quit()
+            self.graph_thread.wait()
+
         # Grab the updated port info from UI
         self.updatePort()
         self.updateBaud()
@@ -174,18 +182,32 @@ class MainWindow(QMainWindow, FORM_CLASS):
         """
         self.statusLabel.setText("Scanning Stopped")
 
-        # Stop the worker thread
-        self.worker.stopRequested.emit() # Stop the worker
-        self.data_thread.quit()          # Tell the thread to exit its event loop
-        self.data_thread.wait()          # Wait for the thread to actually exit
-
-        # Stop the grapher thread
-        self.grapher.stopRequested.emit() # Stop the grapher               
-        self.graph_thread.quit()          # Tell the thread to exit its event loop
-        self.graph_thread.wait()          # Wait for the thread to actually exit
+        # Stop the worker and grapher threads
+        if hasattr(self, 'worker'):
+            self.worker.stopRequested.emit()
+        if hasattr(self, 'grapher'):
+            self.grapher.stopRequested.emit()
 
         self.pushButtonStop.setEnabled(False)
         self.pushButtonStart.setEnabled(True)
+
+    def on_worker_stopped(self):
+        """
+        Function to handle the worker thread stopped signal
+        Input: Worker thread stopped signal
+        Output: Quit and wait for the worker thread to finish
+        """
+        self.data_thread.quit()
+        self.data_thread.wait()
+
+    def on_grapher_stopped(self):
+        """
+        Function to handle the grapher thread stopped signal
+        Input: Grapher thread stopped signal
+        Output: Quit and wait for the grapher thread to finish
+        """
+        self.graph_thread.quit()
+        self.graph_thread.wait()
 
     def updatePort(self):
         """
