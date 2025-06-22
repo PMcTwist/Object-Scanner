@@ -130,6 +130,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Connect to the instance and wait for data
         self.data_thread.started.connect(self.worker.run)
+        self.worker.message_received.connect(self.updateStatusLabel)
         self.worker.error_text.connect(self.error_handler)
         self.worker.distance_reading.connect(self.updateDistance)
         
@@ -148,13 +149,21 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.pushButtonStop.setEnabled(True)
         self.pushButtonStart.setEnabled(False)
 
+    def updateStatusLabel(self, message):
+        """
+        Function to update the status label with a message
+        Input: Message to from worker thread
+        Output: Updated status label with message
+        """
+        self.statusLabel.setText(message)
+
     def error_handler(self, error):
         """
         Function to handle the error messages
-        Input: Error message
-        Output: Error message to the status label
+        Input: Error message from worker thread
+        Output: Error message to the serial label
         """
-        self.statusLabel.setText(error)
+        self.serialLabel.setText(error)
         
     def stopScan(self):
         """
