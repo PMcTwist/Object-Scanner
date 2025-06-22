@@ -123,7 +123,7 @@ void setup() {
   pinMode(limitSwitchBot, INPUT_PULLUP);
   pinMode(limitSwitchTop, INPUT_PULLUP);
   
-  Serial.println("Ready!");
+  Serial.println("STAT(Ready!)");
 }
 
 // ===== Main Loop =====
