@@ -4,6 +4,7 @@ import math
 
 class DataGrapher(QObject):
     newData = pyqtSignal(list)  # Signal to main thread for new data
+    stopRequested = pyqtSignal() # Signal to stop the grapher
 
     def __init__(self, data_queue):
         super().__init__()
@@ -13,6 +14,7 @@ class DataGrapher(QObject):
         self.ax = None
         self.last_z = []
         self.total_graph_data = []
+        self.stopRequested.connect(self.stop)
 
     @pyqtSlot()
     def run(self):
@@ -43,6 +45,7 @@ class DataGrapher(QObject):
         self.ax.scatter(xs, ys, zs, color='blue')
         self.canvas.draw()
 
+    @pyqtSlot()
     def stop(self):
         self.running = False
         if hasattr(self, 'timer'):
