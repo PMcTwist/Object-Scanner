@@ -13,6 +13,8 @@ class Worker(QObject):
     # Any returned errors
     error_text = pyqtSignal([str])
 
+    stopRequested = pyqtSignal() # Signal to stop the worker
+
     def __init__(self, serial_port, *args, **kwargs):
         super(Worker, self).__init__()
         self.args = args
@@ -26,6 +28,8 @@ class Worker(QObject):
 
         # Flag to check if the thread is running
         self.running = True
+
+        self.stopRequested.connect(self.stop)
 
     @pyqtSlot()
     def run(self):
@@ -69,6 +73,7 @@ class Worker(QObject):
                 self.error_text.emit(str(e))
                 self.unplugged = 1
 
+    @pyqtSlot()
     def stop(self):
         """
         Function to stop the worker thread
