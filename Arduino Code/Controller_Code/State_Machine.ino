@@ -214,10 +214,6 @@ void loop() {
           x_dist = 0; // Default if measurement fails
         }
 
-        if (x_dist < 0) {
-          x_dist = 0; // Ensure non-negative distance
-        }
-
         if (x_dist <= platformRadius) {
           // Scanned point is within the platform radius
           foundValidPoint = true;
