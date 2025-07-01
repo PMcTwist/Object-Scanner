@@ -74,6 +74,17 @@ class Worker(QObject):
                 self.error_text.emit(str(e))
                 self.unplugged = 1
 
+        # After loop exits, send stop signal and close port
+        try:
+            self.open_port.write(bytes('0', 'utf-8'))
+        except Exception as e:
+            self.error_text.emit(str(e))
+        try:
+            self.open_port.close()
+        except Exception as e:
+            self.error_text.emit(str(e))
+        self.stopped.emit()
+
     @pyqtSlot()
     def stop(self):
         """
@@ -81,23 +92,7 @@ class Worker(QObject):
         Input: Stop signal from main window
         Output: Set running flag to false
         """
-        # Send the stop signal to the arduino
-        try:
-            self.open_port.write(bytes('0', 'utf-8'))
-        except Exception as e:
-            print(f"Error sending stop signal: {e}")
-        
-        # Set running flag to false
         self.running = False
-        
-        # Close the serial port
-        try:
-            self.open_port.close()
-        except Exception as e:
-            print(f"Error closing port: {e}")
-        
-        # Emit stopped signal
-        self.stopped.emit()
 
     def is_valid_xyz_data(self, data):
         """
