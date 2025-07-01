@@ -1,6 +1,5 @@
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal, pyqtSlot
 import queue
-import math
 
 class DataGrapher(QObject):
     newData = pyqtSignal(list)  # Signal to main thread for new data
@@ -10,17 +9,18 @@ class DataGrapher(QObject):
     def __init__(self, data_queue):
         super().__init__()
         self.data = data_queue
-        self.running = True
+        self.running = False
         self.canvas = None
         self.ax = None
-        self.last_z = []
         self.total_graph_data = []
+        self.timer = None
 
         self.stopRequested.connect(self.stop)
-        stopped = pyqtSignal()
 
     @pyqtSlot()
     def run(self):
+        self.running = True
+
         # Start a timer to poll the queue periodically
         self.timer = QTimer()
         self.timer.timeout.connect(self.pollQueue)
@@ -38,21 +38,28 @@ class DataGrapher(QObject):
 
     @pyqtSlot(list)
     def updateModel(self, data):
-        if not self.running or not self.canvas:
+        if not self.running or not self.canvas or not self.ax:
             return
 
         # Data is already (x, y, z)
         self.total_graph_data.append(data)
         self.ax.clear()
-        xs, ys, zs = zip(*self.total_graph_data)
-        self.ax.scatter(xs, ys, zs, color='blue')
+
+        # Check for graph and plot
+        if self.total_graph_data:
+            xs, ys, zs = zip(*self.total_graph_data)
+            self.ax.scatter(xs, ys, zs, color='blue')
+
         self.canvas.draw()
 
     @pyqtSlot()
     def stop(self):
         self.running = False
-        if hasattr(self, 'timer'):
+
+        # Stop the running timer
+        if self.timer:
             self.timer.stop()
+            self.timer = None
 
         self.stopped.emit()  # Emit stopped signal to main thread
 
