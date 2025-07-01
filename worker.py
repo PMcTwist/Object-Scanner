@@ -1,3 +1,4 @@
+from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 import serial
 import re
@@ -121,6 +122,8 @@ class Worker(QObject):
         Output: Reads data from the serial port and emits signals
         """
         while self.running and self.open_port and self.open_port.is_open:
+            print("Worker loop running, self.running =", self.running)
+            QApplication.processEvents()
             try:
                 # Use a short timeout to prevent blocking
                 if self.open_port.in_waiting > 0:
@@ -151,6 +154,8 @@ class Worker(QObject):
             except Exception as e:
                 self.error_text.emit(f"Unexpected error in data loop: {str(e)}")
                 break
+
+        print("Exiting data loop, running =", self.running)
 
     def _cleanup_and_stop(self):
         """
