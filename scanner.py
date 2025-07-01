@@ -98,22 +98,8 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Input: Button click
         Output: Serial command 1 to arduino
         """
-        # Clean up old threads/objects
-        if hasattr(self, 'worker') and self.worker is not None:
-            self.worker.stopRequested.emit()
-        if hasattr(self, 'grapher') and self.grapher is not None:
-            self.grapher.stopRequested.emit()
-        if hasattr(self, 'data_thread') and self.data_thread is not None:
-            self.data_thread.quit()
-            self.data_thread.wait()
-        if hasattr(self, 'graph_thread') and self.graph_thread is not None:
-            self.graph_thread.quit()
-            self.graph_thread.wait()
-
-        self.worker = None
-        self.grapher = None
-        self.data_thread = None
-        self.graph_thread = None
+        # Cleanup any previous scan threads
+        self._cleanup_previous_scan()  
 
         # Grab the updated port info from UI
         self.updatePort()
@@ -129,37 +115,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Create a thread-safe queue to store data to graph
         self.data_queue = queue.Queue()
 
-        # Create the worker thread and worker instance
-        self.data_thread = QThread()
-        self.worker = Worker(
-            self.portCombo.currentText(),
-            int(self.baudCombo.currentText()),
-            int(self.timeoutCombo.currentText())
-        )
-        self.worker.moveToThread(self.data_thread)
+        # Create and setup worker thread
+        self._setup_worker_thread()
         
-
-        # Create the graph thread and grapher instance
-        self.graph_thread = QThread()
-        self.grapher = DataGrapher(self.data_queue)
-        self.grapher.moveToThread(self.graph_thread)
-
-        # Send obejcts to the grapher thread
-        self.grapher.set_canvas(self.canvas, self.ax) 
-        self.grapher.newData.connect(self.grapher.updateModel)
-
-        # Connect to the instance and wait for data
-        self.data_thread.started.connect(self.worker.run)
-        self.worker.message_received.connect(self.updateStatusLabel)
-        self.worker.error_text.connect(self.error_handler)
-        self.worker.distance_reading.connect(self.updateDistance)
-        self.worker.stopRequested.connect(self.worker.stop)
-        self.worker.stopped.connect(self.on_worker_stopped)
-
-        # Connect the grapher thread to the worker thread
-        self.graph_thread.started.connect(self.grapher.run)
-        self.grapher.stopRequested.connect(self.grapher.stop)
-        self.grapher.stopped.connect(self.on_grapher_stopped)
+        # Create and setup grapher thread
+        self._setup_grapher_thread()
 
         # Start both threads
         self.data_thread.start()
@@ -169,6 +129,60 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # ====== Set Button States ====== #
         self.pushButtonStop.setEnabled(True)
         self.pushButtonStart.setEnabled(False)
+
+    def _cleanup_previous_scan(self):
+        """Properly cleanup previous scan threads"""
+        # Stop existing workers
+        if hasattr(self, 'worker') and self.worker:
+            self.worker.stopRequested.emit()
+        if hasattr(self, 'grapher') and self.grapher:
+            self.grapher.stopRequested.emit()
+        
+        # Wait for threads to finish
+        if hasattr(self, 'data_thread') and self.data_thread:
+            if self.data_thread.isRunning():
+                self.data_thread.quit()
+                self.data_thread.wait(3000)  # Wait max 3 seconds
+        
+        if hasattr(self, 'graph_thread') and self.graph_thread:
+            if self.graph_thread.isRunning():
+                self.graph_thread.quit()
+                self.graph_thread.wait(3000)
+        
+        # Clear references
+        self.worker = None
+        self.grapher = None
+        self.data_thread = None
+        self.graph_thread = None
+
+    def _setup_worker_thread(self):
+        """Setup worker thread with proper connections"""
+        self.data_thread = QThread()
+        self.worker = Worker(
+            self.portCombo.currentText(),
+            int(self.baudCombo.currentText()),
+            int(self.timeoutCombo.currentText())
+        )
+        self.worker.moveToThread(self.data_thread)
+        
+        # Connect signals
+        self.data_thread.started.connect(self.worker.run)
+        self.worker.message_received.connect(self.updateStatusLabel)
+        self.worker.error_text.connect(self.error_handler)
+        self.worker.distance_reading.connect(self.updateDistance)
+        self.worker.stopped.connect(self.on_worker_stopped)
+
+    def _setup_grapher_thread(self):
+        """Setup grapher thread with proper connections"""
+        self.graph_thread = QThread()
+        self.grapher = DataGrapher(self.data_queue)
+        self.grapher.moveToThread(self.graph_thread)
+        
+        # Set canvas and connect signals
+        self.grapher.set_canvas(self.canvas, self.ax)
+        self.grapher.newData.connect(self.grapher.updateModel)
+        self.graph_thread.started.connect(self.grapher.run)
+        self.grapher.stopped.connect(self.on_grapher_stopped)
 
     def updateStatusLabel(self, message):
         """
