@@ -98,13 +98,22 @@ class MainWindow(QMainWindow, FORM_CLASS):
         Input: Button click
         Output: Serial command 1 to arduino
         """
-        # Clean up old threads
-        if hasattr(self, 'data_thread'):
+        # Clean up old threads/objects
+        if hasattr(self, 'worker') and self.worker is not None:
+            self.worker.stopRequested.emit()
+        if hasattr(self, 'grapher') and self.grapher is not None:
+            self.grapher.stopRequested.emit()
+        if hasattr(self, 'data_thread') and self.data_thread is not None:
             self.data_thread.quit()
             self.data_thread.wait()
-        if hasattr(self, 'graph_thread'):
+        if hasattr(self, 'graph_thread') and self.graph_thread is not None:
             self.graph_thread.quit()
             self.graph_thread.wait()
+
+        self.worker = None
+        self.grapher = None
+        self.data_thread = None
+        self.graph_thread = None
 
         # Grab the updated port info from UI
         self.updatePort()
@@ -149,6 +158,8 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Connect the grapher thread to the worker thread
         self.graph_thread.started.connect(self.grapher.run)
+        self.grapher.stopRequested.connect(self.grapher.stop)
+        self.grapher.stopped.connect(self.on_grapher_stopped)
 
         # Start both threads
         self.data_thread.start()
