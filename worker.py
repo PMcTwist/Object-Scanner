@@ -140,7 +140,7 @@ class Worker(QObject):
             
             if self.open_port.is_open:
                 print(f"Port {self.port_name} opened successfully!")
-                time.sleep(0.5)  # Allow port to stabilize
+                time.sleep(2)  # Allow port to stabilize
                 return True
             else:
                 self.error_text.emit("Failed to open port")
@@ -165,7 +165,7 @@ class Worker(QObject):
             
         try:
             print("Sending start signal to Arduino")
-            self.open_port.write(b'1')
+            self.open_port.write(bytes('1', 'utf-8'))  # Use bytes for compatibility
             self.open_port.flush()  # Ensure immediate transmission
             print(f"Start signal sent to {self.open_port.name}")
             time.sleep(0.1)  # Give Arduino time to process
@@ -224,7 +224,7 @@ class Worker(QObject):
         if self.open_port and self.open_port.is_open:
             try:
                 print("Sending stop signal to Arduino")
-                self.open_port.write(b'0')
+                self.open_port.write(bytes('0', 'utf-8'))  # Use bytes for compatibility
                 self.open_port.flush()
                 print("Stop signal sent")
             except Exception as e:
@@ -236,6 +236,8 @@ class Worker(QObject):
                 print("Serial port closed")
             except Exception as e:
                 self.error_text.emit(f"Error closing port: {str(e)}")
+
+        self.stopped.emit()
 
     @pyqtSlot()
     def stop(self):
