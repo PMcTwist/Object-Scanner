@@ -121,12 +121,12 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.data_queue = queue.Queue()
 
         # Create the worker thread and worker instance
+        self.data_thread = QThread()
         self.worker = Worker(
             self.portCombo.currentText(),
             int(self.baudCombo.currentText()),
             int(self.timeoutCombo.currentText())
         )
-        self.data_thread = QThread()
         self.worker.moveToThread(self.data_thread)
         
 
