@@ -51,13 +51,6 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Scan for a list of available ports
         port_list = self.serial_ports()
         self.portCombo.addItems(port_list)
-
-        # Find the usb connected devices
-        self.port = serial.Serial(
-            port=self.portCombo.currentText(), 
-            baudrate=int(self.baudCombo.currentText()), 
-            timeout=int(self.timeoutCombo.currentText())
-            )
         
         # ==========  Graph Stuff ========== #
         # Find the placeholder widget for the model
@@ -128,12 +121,19 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.data_queue = queue.Queue()
 
         # Create the worker thread and worker instance
+        self.worker = Worker(
+            self.portCombo.currentText(),
+            int(self.baudCombo.currentText()),
+            int(self.timeoutCombo.currentText())
+        )
         self.data_thread = QThread()
-        self.worker = Worker(self.port)
+        self.worker.moveToThread(self.data_thread)
+        
 
         # Create the graph thread and grapher instance
         self.graph_thread = QThread()
         self.grapher = DataGrapher(self.data_queue)
+        self.grapher.moveToThread(self.graph_thread)
 
         # Send obejcts to the grapher thread
         self.grapher.set_canvas(self.canvas, self.ax) 
@@ -144,13 +144,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.worker.message_received.connect(self.updateStatusLabel)
         self.worker.error_text.connect(self.error_handler)
         self.worker.distance_reading.connect(self.updateDistance)
-        
+        self.worker.stopRequested.connect(self.worker.stop)
+        self.worker.stopped.connect(self.on_worker_stopped)
+
         # Connect the grapher thread to the worker thread
         self.graph_thread.started.connect(self.grapher.run)
-
-        # Move instances to threads
-        self.worker.moveToThread(self.data_thread)
-        self.grapher.moveToThread(self.graph_thread)
 
         # Start both threads
         self.data_thread.start()
