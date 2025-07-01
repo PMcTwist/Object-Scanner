@@ -52,78 +52,16 @@ class Worker(QObject):
             self.stopped.emit()  # Always emit stopped signal
             return
         
-        # try:
-        #     self.open_port = serial.Serial(
-        #         port=self.port_name,
-        #         baudrate=self.baudrate,
-        #         timeout=self.timeout
-        #     )
-        # except serial.SerialException as e:
-        #     self.error_text.emit(str(e))
-        #     self.unplugged = 1
-        #     return
-        
-        # # Check the port is open
-        # if self.open_port.is_open:
-        #     print("Port is open!")
-        # else:
-        #     print("Port is closed.")
-
-        # time.sleep(1)  # Allow time for the port to stabilize
-
-        # # Main loop
-
         # Send the start signal to the arduino
         if not self._send_start_signal():
             self._cleanup_and_stop()
             return
 
-        # try:
-        #     print("Sending start signal to Arduino")
-        #     self.open_port.write(bytes('1', 'utf-8'))
-        #     self.open_port.flush()
-        #     print(f"Start signal sent to {self.open_port.name}")
-        # except serial.SerialException as e:
-        #     self.error_text.emit(str(e))
-        #     self.unplugged = 1
-
-
         # Main data reading loop
         self._run_data_loop()
 
-        # while self.running:
-        #     try:
-        #         serial_returned = self.open_port.readline().decode("utf-8").strip()
-                
-        #         # Check for STAT() message
-        #         stat_match = re.match(r"STAT\((.*)\)", serial_returned)
-        #         if stat_match:
-        #             self.message_received.emit(stat_match.group(1))
-        #         else:
-        #             # Check for DATA(x,y,z) format
-        #             xyz_tuple = self.is_valid_xyz_data(serial_returned)
-        #             if xyz_tuple:
-        #                 self.distance_reading.emit(xyz_tuple)
-        #     except serial.SerialException as e:
-        #         # Handle serial port errors
-        #         self.error_text.emit(str(e))
-        #         self.unplugged = 1
-
         # Cleanup
         self._cleanup_and_stop()
-
-        # # After loop exits, send stop signal and close port
-        # try:
-        #     print("Sending stop signal to Arduino")
-        #     self.open_port.write(bytes('0', 'utf-8'))
-        #     print("Stop signal sent")
-        # except Exception as e:
-        #     self.error_text.emit(str(e))
-        # try:
-        #     self.open_port.close()
-        # except Exception as e:
-        #     self.error_text.emit(str(e))
-        # self.stopped.emit()
 
     def _open_serial_port(self):
         """
