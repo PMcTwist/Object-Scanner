@@ -44,6 +44,9 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.config_file = configparser.ConfigParser()
         self.config_file.read(self.path + "\\Config\\config.ini")
 
+        # ===== Data Variables ===== #
+        self.saveData = []
+
         # ========== Serial Communication Stuff ========== #.
         # Scan for a list of available ports
         port_list = self.serial_ports()
@@ -80,25 +83,6 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # Add the plot canvas to the placeholder widget's layout
         layout.addWidget(self.canvas)
-        
-        # =========== Threading Stuff =========== #
-        # Set the empty array to store the scan data to save
-        self.saveData = []
-        # Create a thread-safe queue to store data to graph
-        self.data_queue = queue.Queue()
-
-        # Create the worker thread and worker instance
-        self.data_thread = QThread()
-        self.worker = Worker(self.port)
-
-        # Create the graph thread and grapher instance
-        self.graph_thread = QThread()
-        self.grapher = DataGrapher(self.data_queue)
-
-        # Send obejcts to the grapher thread
-        self.grapher.set_canvas(self.canvas, self.ax) 
-        self.grapher.newData.connect(self.grapher.updateModel)
-
         
         # ============ UI Event Handler Call ============ #
         # Update the status labels
@@ -137,6 +121,24 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Update the status label
         self.statusLabel.setText("Scanning...")
 
+        # =========== Threading Stuff =========== #
+        # Set the empty array to store the scan data to save
+        self.saveData = []
+        # Create a thread-safe queue to store data to graph
+        self.data_queue = queue.Queue()
+
+        # Create the worker thread and worker instance
+        self.data_thread = QThread()
+        self.worker = Worker(self.port)
+
+        # Create the graph thread and grapher instance
+        self.graph_thread = QThread()
+        self.grapher = DataGrapher(self.data_queue)
+
+        # Send obejcts to the grapher thread
+        self.grapher.set_canvas(self.canvas, self.ax) 
+        self.grapher.newData.connect(self.grapher.updateModel)
+
         # Connect to the instance and wait for data
         self.data_thread.started.connect(self.worker.run)
         self.worker.message_received.connect(self.updateStatusLabel)
@@ -155,6 +157,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.graph_thread.start()
 
 
+        # ====== Set Button States ====== #
         self.pushButtonStop.setEnabled(True)
         self.pushButtonStart.setEnabled(False)
 
