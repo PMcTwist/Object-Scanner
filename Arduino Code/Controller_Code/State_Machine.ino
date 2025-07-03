@@ -56,6 +56,11 @@ bool stopFlag = true;
 bool homingStarted = false;
 bool foundValidPoint = false;
 
+// data send timer
+unsigned long lastDataSendTimer = 0;
+const unsigned long dataSendInterval = 100; // 100ms
+
+// Homing variables
 unsigned long homingStartTime = 0;
 const unsigned long homingTimeout = 1000000000;
 
@@ -235,9 +240,14 @@ void loop() {
           dataArray[1] = y;
           dataArray[2] = z;
 
-          // Send data
-          String dataToSend = String("DATA(") + String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]) + String(")");
-          Serial.println(dataToSend);
+          
+
+          // Send data with throttled timing applied
+          if (millis() - lastDataSendTimer >= dataSendInterval) {
+            String dataToSend = String("DATA(") + String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]) + String(")");
+            Serial.println(dataToSend);
+            lastDataSendTimer = millis();
+          }
         }
         
         // Small delay between measurements
