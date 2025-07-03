@@ -122,12 +122,13 @@ class Worker(QObject):
         Output: Reads data from the serial port and emits signals
         """
         while self.running and self.open_port and self.open_port.is_open:
-            print("Worker loop running, self.running =", self.running)
-            QApplication.processEvents()
+            # print("Worker loop running, self.running =", self.running)
+            # QApplication.processEvents()
             try:
                 # Use a short timeout to prevent blocking
                 if self.open_port.in_waiting > 0:
                     serial_returned = self.open_port.readline().decode("utf-8").strip()
+                    print("Worker received:", serial_returned)
                     
                     if serial_returned:  # Only process non-empty strings
                         # Check for STAT() message
@@ -140,8 +141,11 @@ class Worker(QObject):
                             if xyz_tuple:
                                 self.distance_reading.emit(xyz_tuple)
                 else:
-                    # Small delay
-                    time.sleep(0.01)
+                    # Small delay when buffer is empty
+                    for _ in range(15):  # 10 iterations of 1ms each = 10ms total
+                        if not self.running:
+                            break
+                        time.sleep(0.001)
                             
             # Improved error handling
             except serial.SerialException as e:
