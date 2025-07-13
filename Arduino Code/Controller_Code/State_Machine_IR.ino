@@ -1,12 +1,9 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <TFLI2C.h>
 
 
-// ===== LiDAR Sensor =====
-TFLI2C tflI2C;
-int16_t tfDist;
-int16_t tfAddr = TFL_DEF_ADR;
+// ===== IR Sensor =====
+int irPin = A0;
 
 // ==== Micro-Step Jumper =====
 const int micro_jumper = 4; // 4 is for 1/4 microsteps
@@ -110,6 +107,33 @@ void stepZHoming() {
     digitalWrite(Z_STEP_PIN, LOW);
     lastHomingStepTime = micros();
   }
+}
+
+void readSensor() {
+  // Take the average reading from the IR sensor
+  int noSamples = 100;
+  int sumOfSamples = 0;
+
+  int sensorValue = 0;
+  double sensorDistance = 0;
+
+  // Take number of readings and get a total
+  for (int i=0; i<noSamples; i++)
+  {
+    senseValue=analogRead(sensePin); // take reading
+    delay(2); // Delay to settle
+    sumOfSamples=sumOfSamples+sensorValue; // update the sum of readings
+  } 
+
+  // Averaging the distance and converting to voltage
+  sensorValue=sumOfSamples/noSamples; // Calculate mean
+  sensorDistance=sensorValue; // Convert to double
+  sensorDistance=mapDouble(sensorDistance,0.0,1023.0,0.0,5.0); // Convert to Voltage
+  // Convert to cm using the Sharp calibration data
+  senseDistance=-5.40274*pow(senseDistance,3)+28.4823*pow(senseDistance,2)-49.7115*senseDistance+31.3444;
+
+  // return a distance measurement
+  return sensorDistance;
 }
  
 // Setup loop to define parameters
@@ -216,12 +240,8 @@ void loop() {
         y_axis_total_distance += y_DistancePerStep;
         yStepCount++;
 
-        // Take LiDAR measurement
-        if (tflI2C.getData(tfDist, tfAddr)) {
-          x_dist = tfDist * 10; // Convert to mm
-        } else {
-          x_dist = 0; // Default if measurement fails
-        }
+        // Take IR measurement
+        x_dist = readSensor();
 
         if (x_dist <= platformRadius) {
           // Scanned point is within the platform radius
