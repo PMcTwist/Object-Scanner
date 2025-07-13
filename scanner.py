@@ -10,6 +10,9 @@ import csv
 # Import communication packages
 import serial
 
+import matplotlib
+matplotlib.use('Qt5Agg')  # Use Qt5 backend for matplotlib
+
 # Import plotting packages
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
