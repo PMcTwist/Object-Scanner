@@ -123,7 +123,7 @@ class Worker(QObject):
         """
         while self.running and self.open_port and self.open_port.is_open:
             # print("Worker loop running, self.running =", self.running)
-            # QApplication.processEvents()
+            QApplication.processEvents()
             try:
                 # Use a short timeout to prevent blocking
                 if self.open_port.in_waiting > 0:
