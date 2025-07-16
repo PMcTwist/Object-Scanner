@@ -9,5 +9,5 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
-# Run Thonny opening the file and run it automatically
-thonny --run "$FILE"
+# Run the Python script
+python3 "$FILE"
