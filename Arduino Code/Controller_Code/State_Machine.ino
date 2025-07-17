@@ -245,7 +245,7 @@ void loop() {
         foundValidPoint = false;
 
         // Take averaged LiDAR measurement (in cm)
-        x_dist = readAveragedLidar(100);
+        x_dist = readSensor(100);
 
         // Convert x_dist to mm to compare the radius
         if ((x_dist * 10) <= platformRadius) {
