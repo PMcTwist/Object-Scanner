@@ -6,6 +6,7 @@ import configparser
 import datetime
 import queue
 import csv
+import sqlite3
 
 # Import communication packages
 import serial
@@ -49,6 +50,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
 
         # ===== Data Variables ===== #
         self.saveData = []
+
+        # ===== SQLite3 Setup =====
+        self.db_path = os.path.join(self.path, "Data", "scan_data.db")
+        self.conn = sqlite3.connect(self.db_path)
+        self._create_table()
 
         # ========== Serial Communication Stuff ========== #.
         # Scan for a list of available ports
@@ -94,6 +100,19 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.pushButtonStart.clicked.connect(self.startScan)
         self.pushButtonStop.clicked.connect(self.stopScan)
         self.pushButtonSave.clicked.connect(self.saveFile)
+
+    def _create_table(self):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS scan_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                x REAL,
+                y REAL,
+                z REAL,
+                timestamp TEXT
+            )
+        """)
+        self.conn.commit()
 
     def startScan(self):
         """
@@ -157,6 +176,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.grapher = None
         self.data_thread = None
         self.graph_thread = None
+
+        # Clear scan data from database file
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM scan_data")
+        self.conn.commit()
 
     def _setup_worker_thread(self):
         """Setup worker thread with proper connections"""
