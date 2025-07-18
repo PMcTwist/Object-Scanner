@@ -19,7 +19,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # PyQt5 UI imports
 import PyQt5.uic
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QFileDialog
 from PyQt5.QtCore import QThread
 
 # Custom Packages
@@ -294,8 +294,12 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Get current timestamp
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+        filename, _ = QFileDialog.getSaveFileName(
+            parent, "Save Scan Data", f"{timestamp}-scanData.txt", "CSV Files (*.csv);;All Files (*)"
+        )
+
         # Open the file and write the save array as text
-        with open(self.path + f"\\Data\\{timestamp}-scanData.txt", "w") as file:
+        with open(filename, "w") as file:
             for row in self.saveData:
                 line = ','.join(str(item) for item in row)
                 file.write(line + '\n')
