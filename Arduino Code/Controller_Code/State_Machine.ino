@@ -8,6 +8,9 @@ TFLI2C tflI2C;
 int16_t tfDist;
 int16_t tfAddr = TFL_DEF_ADR;
 
+// distance of sensor from middle of platform
+const float sensorOffset = 150
+
 // ==== Micro-Step Jumper =====
 const int micro_jumper = 4; // 4 is for 1/4 microsteps
 
@@ -255,9 +258,14 @@ void loop() {
           // Calculate current angle in radians
           float angle = (yStepCount * 2.0 * PI) / stepsPerRev;
 
-          // Calculate Cartesian coordinates
-          float x = cos(angle) * (x_dist * 10);
-          float y = sin(angle) * (x_dist * 10);
+          // Compensate for the sensor offset from center of platform
+          // multiply x_dist by 10 to convert to mm
+          float r = x_dist *10
+          float r_offset = sensorOffset + r
+         
+          // Calculate Cartesian coordinates        
+          float x = cos(angle) * r_offset;
+          float y = sin(angle) * r;
           float z = z_axis_total_distance;
 
           // Prepare data
