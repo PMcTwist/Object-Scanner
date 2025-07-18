@@ -302,7 +302,17 @@ class MainWindow(QMainWindow, FORM_CLASS):
                 data_block = [distance[0], distance[1], distance[2]]
 
                 # Append data block to the save array
-                self.saveData.append(data_block)
+                # self.saveData.append(data_block)
+
+                # Insert into SQLite3
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    "INSERT INTO scan_data (x, y, z) VALUES (?, ?, ?)",
+                    (data_block[0], data_block[1], data_block[2])
+                )
+                self.conn.commit()
+
+                # Put the data block into the queue for grapher thread
                 self.data_queue.put(data_block)
             except Exception as e:
                 print(e)
@@ -318,9 +328,14 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Get current timestamp
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+        # Connect to the database and grab the data
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT x, y, z FROM scan_data")
+        rows = cursor.fetchall()
+
         # Open the file and write the save array as text
         with open(self.path + f"\\Data\\{timestamp}-scanData.txt", "w") as file:
-            for row in self.saveData:
+            for row in rows:
                 line = ','.join(str(item) for item in row)
                 file.write(line + '\n')
 
