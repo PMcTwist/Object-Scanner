@@ -50,7 +50,7 @@ class DataGrapher(QObject):
             return
         try:
             # Connect to database
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.data)
             cursor = conn.cursor()
             
             # Get any new records since last_id
