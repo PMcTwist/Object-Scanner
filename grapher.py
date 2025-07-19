@@ -49,24 +49,25 @@ class DataGrapher(QObject):
         if not self.running:
             return
         try:
-            # Connect to database
             conn = sqlite3.connect(self.data)
             cursor = conn.cursor()
             
-            # Get any new records since last_id
+            # Just check if new data exists
             cursor.execute("""
-                SELECT id, x, y, z 
-                FROM scan_data 
-                WHERE id > ? 
-                ORDER BY id ASC
+                SELECT EXISTS(
+                    SELECT 1 FROM scan_data WHERE id > ?
+                )
             """, (self.last_id,))
             
-            new_data = cursor.fetchall()
+            has_new_data = cursor.fetchone()[0]
             
-            for row in new_data:
-                self.last_id = row[0]  # Update last processed ID
-                data_array = [row[1], row[2], row[3]]  # x, y, z values
-                self.newData.emit(data_array)
+            if has_new_data:
+                # Update last_id and signal for update
+                cursor.execute("SELECT MAX(id) FROM scan_data")
+                self.last_id = cursor.fetchone()[0]
+
+                # Send out an empty signal to update the graph
+                self.newData.emit([])
                 
             conn.close()
         except sqlite3.Error as e:
@@ -82,16 +83,28 @@ class DataGrapher(QObject):
         if not self.running or not self.canvas or not self.ax:
             return
 
-        # Data is already (x, y, z)
-        self.total_graph_data.append(data)
-        self.ax.clear()
+        try:
+            conn = sqlite3.connect(self.data)
+            cursor = conn.cursor()
+            
+            # Get all data points
+            cursor.execute("SELECT x, y, z FROM scan_data")
+            all_data = cursor.fetchall()
+            conn.close()
 
-        # Check for graph and plot
-        if self.total_graph_data:
-            xs, ys, zs = zip(*self.total_graph_data)
-            self.ax.scatter(xs, ys, zs, color='blue')
-
-        self.canvas.draw()
+            if all_data:
+                # Clear the current plot
+                self.ax.clear()
+                
+                # Unzip the data directly from database results
+                xs, ys, zs = zip(*all_data)
+                self.ax.scatter(xs, ys, zs, color='blue')
+                
+                # Update the plot
+                self.canvas.draw()
+                
+        except sqlite3.Error as e:
+            self.error_text.emit(f"Plot Update Error: {str(e)}")
 
     @pyqtSlot()
     def stop(self):
