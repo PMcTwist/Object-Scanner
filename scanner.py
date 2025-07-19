@@ -102,6 +102,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.pushButtonSave.clicked.connect(self.saveFile)
 
     def _create_table(self):
+        """ 
+        Function to create the SQLite3 table for scan data
+        Input: None
+        Output: Creates a table if it does not exist
+        """
         cursor = self.conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS scan_data (
@@ -153,7 +158,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.pushButtonStart.setEnabled(False)
 
     def _cleanup_previous_scan(self):
-        """Properly cleanup previous scan threads"""
+        """
+        Properly cleanup previous scan threads
+        Input: None
+        Output: Stops existing threads and clears references
+        """
         # Stop existing workers
         if hasattr(self, 'worker') and self.worker:
             self.worker.stopRequested.emit()
@@ -183,7 +192,11 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.conn.commit()
 
     def _setup_worker_thread(self):
-        """Setup worker thread with proper connections"""
+        """
+        Setup worker thread with proper connections
+        Input: None
+        Output: Worker thread ready to run
+        """
         self.data_thread = QThread()
         self.worker = Worker(
             self.portCombo.currentText(),
@@ -200,9 +213,13 @@ class MainWindow(QMainWindow, FORM_CLASS):
         self.worker.stopped.connect(self.on_worker_stopped)
 
     def _setup_grapher_thread(self):
-        """Setup grapher thread with proper connections"""
+        """
+        Setup grapher thread with proper connections
+        Input: None
+        Output: Grapher thread ready to run
+        """
         self.graph_thread = QThread()
-        self.grapher = DataGrapher(self.data_queue)
+        self.grapher = DataGrapher(self.db_path)
         self.grapher.moveToThread(self.graph_thread)
         
         # Set canvas and connect signals
@@ -345,7 +362,7 @@ class MainWindow(QMainWindow, FORM_CLASS):
                     line = ','.join(str(item) for item in row)
                     file.write(line + '\n')
         else:
-            # If no filename is selected, do nothing
+            # If no filename is selected update the status label
             self.statusLabel.setText("No file selected for saving.")
 
     @staticmethod
