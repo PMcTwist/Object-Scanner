@@ -78,7 +78,7 @@ class Worker(QObject):
             )
             
             if self.open_port.is_open:
-                print(f"Port {self.port_name} opened successfully!")
+                self.error_text.emit(f"Port {self.port_name} opened successfully!")
                 time.sleep(2)  # Allow port to stabilize
                 return True
             else:
@@ -103,10 +103,9 @@ class Worker(QObject):
             return False
             
         try:
-            print("Sending start signal to Arduino")
             self.open_port.write(bytes('1', 'utf-8'))  # Use bytes for compatibility
             self.open_port.flush()  # Ensure immediate transmission
-            print(f"Start signal sent to {self.open_port.name}")
+            self.error_text.emit(f"Start signal sent to {self.open_port.name}")
             time.sleep(0.1)  # Give Arduino time to process
             return True
             
@@ -128,7 +127,6 @@ class Worker(QObject):
                 # Use a short timeout to prevent blocking
                 if self.open_port.in_waiting > 0:
                     serial_returned = self.open_port.readline().decode("utf-8").strip()
-                    print("Worker received:", serial_returned)
                     
                     if serial_returned:  # Only process non-empty strings
                         # Check for STAT() message
@@ -170,17 +168,15 @@ class Worker(QObject):
         # Send the stop signal to the Arduino
         if self.open_port and self.open_port.is_open:
             try:
-                print("Sending stop signal to Arduino")
                 self.open_port.write(bytes('0', 'utf-8'))  # Use bytes for compatibility
                 self.open_port.flush()
-                print("Stop signal sent")
             except Exception as e:
                 self.error_text.emit(f"Error sending stop signal: {str(e)}")
             
             # Close the serial port
             try:
                 self.open_port.close()
-                print("Serial port closed")
+                self.error_text.emit("Serial port closed")
             except Exception as e:
                 self.error_text.emit(f"Error closing port: {str(e)}")
 
@@ -193,7 +189,6 @@ class Worker(QObject):
         Input: Stop signal from main window
         Output: Set running flag to false
         """
-        print("Stopping worker thread")
         self.running = False
 
     def is_valid_xyz_data(self, data):
@@ -216,5 +211,5 @@ class Worker(QObject):
             else:
                 return None
         except Exception as e:
-            print(f"Error parsing data: {data} : {e}")
+            self.error_text.emit(f"Error parsing data: {data} : {e}")
             return None
