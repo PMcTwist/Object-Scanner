@@ -20,7 +20,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # PyQt5 UI imports
 import PyQt5.uic
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QFileDialog
 from PyQt5.QtCore import QThread
 
 # Custom Packages
@@ -328,16 +328,25 @@ class MainWindow(QMainWindow, FORM_CLASS):
         # Get current timestamp
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Save Scan Data", f"{timestamp}-scanData.txt", "CSV Files (*.csv);;All Files (*)"
+        )
+
         # Connect to the database and grab the data
         cursor = self.conn.cursor()
         cursor.execute("SELECT x, y, z FROM scan_data")
         rows = cursor.fetchall()
 
-        # Open the file and write the save array as text
-        with open(self.path + f"\\Data\\{timestamp}-scanData.txt", "w") as file:
-            for row in rows:
-                line = ','.join(str(item) for item in row)
-                file.write(line + '\n')
+        # Check for filename to avoid crashing
+        if filename:
+            # Open the file and write the save array as text
+            with open(filename, "w") as file:
+                for row in rows:
+                    line = ','.join(str(item) for item in row)
+                    file.write(line + '\n')
+        else:
+            # If no filename is selected, do nothing
+            self.statusLabel.setText("No file selected for saving.")
 
     @staticmethod
     def serial_ports():
