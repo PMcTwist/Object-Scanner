@@ -9,7 +9,7 @@ int16_t tfDist;
 int16_t tfAddr = TFL_DEF_ADR;
 
 // distance of sensor from middle of platform
-const float sensorOffset = 150;
+const float sensorOffset = 15.0; // mm
 
 // ==== Micro-Step Jumper =====
 const int micro_jumper = 4; // 4 is for 1/4 microsteps
