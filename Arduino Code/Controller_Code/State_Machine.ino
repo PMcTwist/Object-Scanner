@@ -251,7 +251,7 @@ void loop() {
         x_dist = readSensor(100);
 
         // Convert x_dist to mm to compare the radius
-        if ((x_dist * 10) <= platformRadius) {
+        if ((x_dist * 10) <= ((platformRadius * 2) + sensorOffset)) {
           // Scanned point is within the platform radius
           foundValidPoint = true;
 
