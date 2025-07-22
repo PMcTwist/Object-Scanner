@@ -128,7 +128,7 @@ QPushButton:hover {
 }
 
 QPushButton#startButton:disabled {
-    background-color: darkgreen;
+    background-color: grey;
     color: #ccc;
     border: 2px solid #aaa;
 }
@@ -168,7 +168,7 @@ QPushButton:hover {
 }
 
 QPushButton#stopButton:disabled {
-    background-color: darkred;
+    background-color: grey;
     color: darkgrey;
     border: 2px solid darkgrey;
 }
