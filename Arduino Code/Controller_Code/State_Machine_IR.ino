@@ -1,17 +1,23 @@
 #include <Arduino.h>
-#include <Wire.h>
 
+// ===== Sharp IR Sensor =====
+#define SENSOR_PIN A0
+int scan_amount = 40;  // Number of readings to average
 
-// ===== IR Sensor =====
-int irPin = A0;
+// distance of sensor from middle of platform
+const float distance_to_center = 150.0; // mm - adjust this to your actual setup
 
-// ==== Micro-Step Jumper =====
-const int micro_jumper = 4; // 4 is for 1/4 microsteps
+// ==== Full Step Configuration =====
+const int micro_jumper = 2; // 2 is for 1/2 microstepping
+
+// ===== Scan Parameters =====
+// Reduce the scans per step to help scan time
+const int stepsPerReading = 1;  // Take a reading every single step - no more multiple steps!
 
 // ===== Platform Geometry =====
 const float y_StepAngle = 1.8; // degrees per full step
 const int motor_steps_per_rev = 360 / y_StepAngle; // 200 for 1.8°
-const int stepsPerRev = motor_steps_per_rev * micro_jumper; // 200 * 4 = 800
+const int stepsPerRev = motor_steps_per_rev * micro_jumper; // 200 * 2 = 400 for 1/2 steps
 const float platformRadius = 100; // mm
 const float platformCircumference = 2.0 * 3.1415926535 * platformRadius;
 const float y_DistancePerStep = platformCircumference / stepsPerRev;
@@ -55,7 +61,7 @@ bool foundValidPoint = false;
 
 // data send timer
 unsigned long lastDataSendTimer = 0;
-const unsigned long dataSendInterval = 100; // 100ms
+const unsigned long dataSendInterval = 50; // Reduced from 100ms to 50ms
 
 // Homing variables
 unsigned long homingStartTime = 0;
@@ -72,30 +78,35 @@ float dataArray[3];
 int yStepCount = 0;
 int zStepCount = 0;
 
-const int yStepsPerZ = stepsPerRev; // Need to fix this part for full rotation!!
+const int yStepsPerZ = stepsPerRev; 
 const int zStepsTotal = 200 * micro_jumper;
  
 // Step timing variables
 unsigned long lastHomingStepTime = 0;
-const unsigned long homingStepInterval = 1000; // 10ms between homing steps (much slower)
+const unsigned long homingStepInterval = 800; // Reduced from 1000 to 800 microseconds
  
-// Custom stepper functions (much slower timing)
+// Faster 1/2 microstepping reliable stepping functions
 void stepY(int direction) {
+  // Set direction and wait
   digitalWrite(Y_DIR_PIN, direction > 0 ? HIGH : LOW);
-  delayMicroseconds(10); // Let direction settle
+  delayMicroseconds(500); // Reduced from 2ms to 500µs
+  
+  // Create step pulse
   digitalWrite(Y_STEP_PIN, HIGH);
-  delayMicroseconds(5);
+  delayMicroseconds(200); // Reduced from 300µs to 200µs
   digitalWrite(Y_STEP_PIN, LOW);
-  delayMicroseconds(1000); // Pause between steps
+  
+  // Delay between steps - significantly reduced for speed
+  delay(50); // Reduced from 100ms to 50ms
 }
  
 void stepZ(int direction) {
   digitalWrite(Z_DIR_PIN, direction > 0 ? HIGH : LOW);
-  delayMicroseconds(10); // Let direction settle  
+  delayMicroseconds(300); // Reduced from 500µs
   digitalWrite(Z_STEP_PIN, HIGH);
-  delayMicroseconds(5);
+  delayMicroseconds(80); // Reduced from 100µs
   digitalWrite(Z_STEP_PIN, LOW);
-  delayMicroseconds(1000); // Pause between steps
+  delay(3); // Reduced from 5ms to 3ms
 }
  
 void stepZHoming() {
@@ -109,37 +120,39 @@ void stepZHoming() {
   }
 }
 
-void readSensor() {
-  // Take the average reading from the IR sensor
-  int noSamples = 100;
-  int sumOfSamples = 0;
+// Sharp IR sensor reading function (returns distance in cm)
+float readSensor(int samples = 40) {
+  float analog_total = 0;
+  float measured_analog = 0;
 
-  int sensorValue = 0;
-  double sensorDistance = 0;
+  for (int i = 0; i < samples; i++) {
+    measured_analog = analogRead(SENSOR_PIN);
+    analog_total += measured_analog;
+    delay(2);  // Small delay between readings
+  }
 
-  // Take number of readings and get a total
-  for (int i=0; i<noSamples; i++)
-  {
-    senseValue=analogRead(sensePin); // take reading
-    delay(2); // Delay to settle
-    sumOfSamples=sumOfSamples+sensorValue; // update the sum of readings
-  } 
+  float distance = analog_total / samples;  // Get the mean
+  
+  // Convert analog reading to voltage (assuming 5V reference)
+  distance = (distance * 5.0) / 1023.0;
+  
+  // Sharp GP2Y0A51SK0F formula from datasheet (distance in cm)
+  distance = -5.40274*pow(distance,3) + 28.4823*pow(distance,2) - 49.7115*distance + 31.3444;
+  
+  return distance;  // Return distance in cm
+}
 
-  // Averaging the distance and converting to voltage
-  sensorValue=sumOfSamples/noSamples; // Calculate mean
-  sensorDistance=sensorValue; // Convert to double
-  sensorDistance=mapDouble(sensorDistance,0.0,1023.0,0.0,5.0); // Convert to Voltage
-  // Convert to cm using the Sharp calibration data
-  senseDistance=-5.40274*pow(senseDistance,3)+28.4823*pow(senseDistance,2)-49.7115*senseDistance+31.3444;
-
-  // return a distance measurement
-  return sensorDistance;
+// Helper function for float mapping
+float mapFloat(float fval, float val_in_min, float val_in_max, float val_out_min, float val_out_max) {
+  return (fval - val_in_min) * (val_out_max - val_out_min) / (val_in_max - val_in_min) + val_out_min;
 }
  
 // Setup loop to define parameters
 void setup() {
   Serial.begin(115200);
-  Wire.begin();
+  
+  pinMode(SENSOR_PIN, INPUT);
+  analogReference(DEFAULT);  // Use 5V reference for Sharp sensor
   
   pinMode(ENABLE_PIN, OUTPUT);
   digitalWrite(ENABLE_PIN, HIGH); // Enable steppers
@@ -153,7 +166,7 @@ void setup() {
   pinMode(limitSwitchBot, INPUT_PULLUP);
   pinMode(limitSwitchTop, INPUT_PULLUP);
   
-  Serial.println("STAT(Ready!)");
+  Serial.println("STAT(Ready with Sharp IR sensor!)");
 }
 
 // ===== Main Loop =====
@@ -232,27 +245,27 @@ void loop() {
       if (yStepCount < yStepsPerZ) {
         Serial.println("STAT(Scanning...)");
 
+        // Calculate current angle BEFORE taking measurement (this is the current position)
+        float angle = (yStepCount * 2.0 * PI) / stepsPerRev;
+
         // reset point flag
         foundValidPoint = false;
 
-        // Take a Y step
-        stepY(1);
-        y_axis_total_distance += y_DistancePerStep;
-        yStepCount++;
+        // Take averaged Sharp IR measurement (in cm)
+        x_dist = readSensor(40);
 
-        // Take IR measurement
-        x_dist = readSensor();
+        // Convert distance to mm and apply the working formula from reference code
+        float measured_distance_mm = x_dist * 10; // Convert cm to mm
+        float distance_from_center = distance_to_center - measured_distance_mm;
 
-        if (x_dist <= platformRadius) {
-          // Scanned point is within the platform radius
+        // Check if the measurement is valid (object is between sensor and center)
+        if (distance_from_center > 0 && distance_from_center <= (platformRadius * 2)) {
+          // Scanned point is valid
           foundValidPoint = true;
 
-          // Calculate current angle in radians
-          float angle = (yStepCount * 2.0 * PI) / stepsPerRev;
-
-          // Calculate Cartesian coordinates
-          float x = cos(angle) * x_dist;
-          float y = sin(angle) * x_dist;
+          // Calculate Cartesian coordinates using the working formula
+          float x = sin(angle) * distance_from_center;  // Note: sin for X
+          float y = cos(angle) * distance_from_center;  // Note: cos for Y
           float z = z_axis_total_distance;
 
           // Prepare data
@@ -260,18 +273,28 @@ void loop() {
           dataArray[1] = y;
           dataArray[2] = z;
 
-          
-
-          // Send data with throttled timing applied
+          // Send data with throttled timing applied (now faster)
           if (millis() - lastDataSendTimer >= dataSendInterval) {
             String dataToSend = String("DATA(") + String(dataArray[0]) + "," + String(dataArray[1]) + "," + String(dataArray[2]) + String(")");
             Serial.println(dataToSend);
             lastDataSendTimer = millis();
           }
         }
+
+        // NOW move to next position AFTER taking the measurement
+        for (int i = 0; i < stepsPerReading; i++) {
+            stepY(1);
+            y_axis_total_distance += y_DistancePerStep;
+            yStepCount++;
+            
+            // Check if we've reached the total steps
+            if (yStepCount >= yStepsPerZ) {
+                break;
+            }
+        }
         
-        // Small delay between measurements
-        delay(200); // Longer delay between Y steps
+        // Faster delay between measurements
+        delay(100); // Reduced from 200ms to 100ms
       } else {
         // Completed all Y steps for this Z level
         if (!foundValidPoint) {
@@ -284,17 +307,20 @@ void loop() {
       }
       break;
     
-    // Move Z axis up one step
+    // Move Z axis up for 0.5mm increments
     case MOVE_Z:
-      Serial.println("STAT(Moving Z axis up - step )");
+      Serial.println("STAT(Moving Z axis up - step ");
       Serial.println(zStepCount + 1);
 
-      for (int i = 0; i < z_stepsPerRev / 2; i++) {
+      // Move Z up for 0.5mm increment
+      // With 2mm pitch rod and 400 steps/rev (1/2 microstepping), each step = 0.005mm
+      // For 0.5mm movement, use 100 steps
+      for (int i = 0; i < 100; i++) {
         stepZ(1); // Move Z one microstep
       }
 
-      // Z moved 1 full rotation (1mm)
-      z_axis_total_distance += rodPitch / 2; // 1mm per full thread revolution
+      // Z moved 0.5mm (100 steps * 0.005mm per step)
+      z_axis_total_distance += 0.5; // 0.5mm per layer
       zStepCount++;
 
       // Reset Y parameters for this Z level
