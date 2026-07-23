@@ -1,55 +1,234 @@
-# 3D Scanner
 
-This project is a capstone for UWindsors mechatronics program. We wanted to kick it up a notch and build a custom UI for PC integration as well as a stand alone touch ui driven by raspberry pi. 
-The hardware of the project is driven by Arduino Uno and Raspberry Pi.
+# Object Scanner
 
-## Basic Design
+A low-cost, real-time 3D scanning platform built using **Python**, **C++**, **Arduino**, **Raspberry Pi**, and **LiDAR** technology.
 
-The basic concept is an x, y, z measurement taken from a rotating platform with a threaded rod with a distance sensor on it. Pretty simple in concept. 
+Originally developed as a capstone project at the **University of Windsor**, Object Scanner was designed to demonstrate that accurate 3D scanning can be achieved using affordable, readily available hardware while providing a modular platform for future development and experimentation.
 
-![First CAD](/Assets/assets/model.jpg)
+---
 
-## Implemenatation
+## Project Overview
 
-We started out with a few Nema17 motors, TF-Luna LiDAR sensor, and an arduino. 
+Commercial 3D scanners are often prohibitively expensive for students, hobbyists, and small organizations. Object Scanner was created to provide an affordable alternative capable of producing real-time point cloud visualizations using open-source software and off-the-shelf hardware.
 
-![Basics](/Assets/assets/week1-layout.jpg)
+The system combines embedded firmware, desktop software, and custom hardware into a complete scanning platform capable of:
 
-From there a basic UI was made with PyQt5 and QtDesigner.
+- Capturing real-time LiDAR/IR measurements
+- Controlling dual-axis motion using stepper motors
+- Processing scan data on a Raspberry Pi
+- Visualizing point cloud data in real time
+- Exporting captured scan information for future processing
+
+---
+
+## Features
+
+- Real-time 3D point cloud visualization
+- Python desktop application using PyQt5
+- Arduino-based motion controller
+- Raspberry Pi deployment
+- SQLite scan data storage
+- Live serial communication between hardware and software
+- Configurable scan parameters
+- Exportable scan data
+- Modular architecture for future sensor upgrades
+
+---
+
+# Technologies
+
+## Software
+
+- Python
+- PyQt5
+- SQLite
+- Matplotlib
+- PySerial
+
+## Embedded
+
+- Arduino
+- C++
+- Stepper Motor Control
+- Serial Communication
+
+## Hardware
+
+- Raspberry Pi
+- TF-Luna LiDAR / IR Sensor
+- NEMA Stepper Motors
+- CNC Shield
+- A4988 Drivers
+
+---
+
+# System Architecture
+
+```
+               +----------------------+
+               |    Python GUI        |
+               |      (PyQt5)         |
+               +----------+-----------+
+                          |
+                    Serial Connection
+                          |
+               +----------v-----------+
+               |      Arduino         |
+               | Motion Controller    |
+               +----------+-----------+
+                          |
+          +---------------+----------------+
+          |                                |
+   Stepper Motors                    LiDAR / IR Seonsor
+          |                                |
+          +---------------+----------------+
+                          |
+                    Scan Coordinates
+                          |
+               +----------v-----------+
+               |    SQLite Database   |
+               +----------+-----------+
+                          |
+               Real-Time 3D Visualization
+```
+
+---
+
+# Screenshots
+
+## User Interface
 
 ![Basic UI](/Assets/assets/UI.jpg)
-
-Including a CNC shield board and A4988 drivers to drive the motors allowed for microstepping for a better resolution of scan.
-
-![Mechanical Mock up](/Assets/assets/week3-mockup.jpg)
-
-To take it over the top, the addition of a raspberry pi and touch screen for serial control of the scanner and real time model rendering.
-
 ![UI Mock up](/Assets/assets/week4_HMI_2.jpg)
 
-Next, updating the CAD to refelct the real components and the measurments we need for a frame.
+---
 
+## Hardware
+
+![First CAD](/Assets/assets/model.jpg)
+![Basics](/Assets/assets/week1-layout.jpg)
+![Mechanical Mock up](/Assets/assets/week3-mockup.jpg)
 ![CAD Update](/Assets/assets/week4-CAD.jpg)
-
-After looking into manufacturer STL files, we updated the model to be a 1:1 of the final product.
-
 ![Final Cad](/Assets/assets/FullModel.jpg)
 
-Continued development of the UI was needed to get the realtime feedback we are looking for.
+---
+
+## Run-Time
 
 ![UI Update](/Assets/assets/realTime.gif)
 
+---
 
-## Setup
+# Repository Structure
 
-Users can extract the provided exe (For Windows) in releases or use the Pi-HMI directly on the device. Linux users can use the python files directly or setup the same system service we called. 
+```
+Object-Scanner/
 
-The scanner has two modes of operation. <br/>
-   1 - Pi-HMI <br/>
-   2 - USB Interface 
+Arduino/
+    Embedded firmware
 
-## Contacts
-🤓 - Kevin -  <br/>
-🤬 - Pat - patmaynard452@hotmail.com
+Assets/
+    Images and UI resources
+
+Database/
+    SQLite scan database
+
+Models/
+    3D printable components
+
+Python/
+    Desktop application
+
+Releases/
+    Executable releases
+
+Scripts/
+    Raspberry Pi startup scripts
+```
 
 ---
+
+# Installation
+
+## Requirements
+
+- Python 3.11+
+- PyQt5
+- Matplotlib
+- PySerial
+- SQLite3
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# Running
+
+Launch the application:
+
+```bash
+python scanner.py
+```
+
+Connect the Arduino via USB and configure the correct COM port before starting a scan.
+
+---
+
+# Future Improvements
+
+Potential future enhancements include:
+
+- Multi-threaded scan processing improvements
+- Higher resolution scanning
+- Additional sensor support
+- Mesh generation
+- STL export
+- Network-based control
+- Improved scan filtering algorithms
+
+---
+
+# Lessons Learned
+
+This project provided valuable experience in:
+
+- Embedded systems
+- Python application development
+- Hardware/software integration
+- Real-time data visualization
+- Multithreaded programming
+- SQLite databases
+- Raspberry Pi deployment
+- Project planning
+- Team collaboration
+
+---
+
+# Authors
+
+## Patrick Maynard
+
+Software Development  
+Software Design • Embedded Systems • Automation
+
+Email: patmaynard452@gmail.com
+LinkedIn: https://www.linkedin.com/in/pat-maynard-b97a05b5/
+
+---
+
+## Kevin McClintock
+
+Mechanical Design • Embedded Systems • Automation
+
+Email:
+LinkedIn:
+
+---
+
+# License
+
+This project is released under the MIT License.
